@@ -101,6 +101,7 @@ a usuarios reales durante el desarrollo.
 
 Para revisar los correos recibidos, accede a tu bandeja de Mailtrap y selecciona el inbox configurado para este proyecto.
 
+- la configuracion SMTP en `.env.local` está preparada para usar Mailtrap.
 
 ### 👑 Usuario administrador inicial
 
@@ -133,7 +134,6 @@ La documentación completa y navegable de la API se expone mediante Swagger UI (
 Desde esa interfaz puedes:
 - Probar endpoints directamente (autenticándote con el JWT en el botón Authorize).
 - Ver parámetros, modelos de entrada/salida y códigos de respuesta.
-- Descargar el spec para integraciones externas o generación de SDKs.
 
 ## 🔄 Interacción entre Backend y Frontend
 
