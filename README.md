@@ -106,7 +106,6 @@ Para revisar los correos recibidos, accede a tu bandeja de Mailtrap y selecciona
 
 La aplicación crea automáticamente un usuario administrador inicial con el correo `admin@miapp.com` y la contraseña `admin123` (encriptada), mediante un Command interno de Symfony. Este proceso no requiere que ejecutes manualmente el comando en consola: el usuario se genera por el propio código cuando es necesario, asegurando que siempre exista un acceso administrativo desde el primer inicio.
 
-
 ---
 
 ## 🧩 Aplicación
@@ -237,3 +236,29 @@ Permisos:
 
 Capturas: 
 ![user_task.png](docs/images/tasks/user_task.png)
+
+
+#### 👤 3.3 Exportar reporte de tareas
+
+Lista de características de la exportación:
+- Formatos disponibles: CSV y PDF.
+- El contenido del reporte se genera usando exactamente los filtros activos en la lista (búsqueda, estado, prioridad, asignado, rango de fechas, etc.).
+- Reporte diario automático (por comando):
+Puedes generar un reporte de rango de fechas y enviarlo por correo (si no se pasa correo se genera localmente en /var/reports).:
+    ```bash
+    php bin/console app:tasks:daily-report --from=2025-09-01 --to=2025-11-30 --email=jhonf2077@gmail.com
+    ```
+
+Capturas reporte de tareas en el front:
+
+***Filtro por  Prioridad = Alta***
+
+![filtro_prioridad.png](docs/images/tasks/filtro_prioridad.png)
+
+***Generar Reporte***
+
+![generar_reporte.png](docs/images/tasks/generar_reporte.png)
+
+***Reporte generado***
+
+![reporte-pdf.png](docs/images/tasks/reporte-pdf.png)
