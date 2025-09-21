@@ -68,7 +68,20 @@ async function onRegister() {
       warn.value = 'Tu cuenta se creó, pero hubo un problema al iniciar sesión automáticamente. Inicia sesión manualmente.' + (e2?.message ? ' ('+ e2.message +')' : '');
     }
   } catch (e) {
-    error.value = e.message || 'Error al registrar';
+    // Gestión robusta de errores de validación
+    if (Array.isArray(e?.response?.data?.errors) && e.response.data.errors.length > 0) {
+      error.value = e.response.data.errors.map(err => err.message).join(' | ');
+    } else if (Array.isArray(e?.response?.data?.violations) && e.response.data.violations.length > 0) {
+      error.value = e.response.data.violations.map(err => err.message).join(' | ');
+    } else if (e?.response?.data?.error) {
+      error.value = e.response.data.error;
+    } else if (Array.isArray(e?.response?.data)) {
+      error.value = e.response.data.map(err => err.message).join(' | ');
+    } else if (e?.message) {
+      error.value = e.message;
+    } else {
+      error.value = 'Error al registrar';
+    }
   } finally {
     loading.value = false;
   }

@@ -56,25 +56,38 @@
     </v-data-table>
 
     <!-- Dialogos -->
-    <TaskForm v-model="dialogForm" :task="selected" @created="onCreated" @updated="onUpdated" />
-    <TaskDeleteDialog v-model="dialogDelete" :task="selected" @deleted="onDeleted" />
+    <TaskForm v-model="dialogForm" :task="selected" :users="users" :create-task-fn="createTaskFn" :update-task-fn="updateTaskFn" :saving="saving" @created="onCreated" @updated="onUpdated" />
+    <TaskDeleteDialog v-model="dialogDelete" :task="selected" :delete-task-fn="deleteTaskFn" :saving="saving" @deleted="onDeleted" />
     <TaskShow v-model="dialogShow" :task="selected" />
-    <TaskExportDialog v-model="dialogExport" @exported="onExported" />
+    <TaskExportDialog v-model="dialogExport" :filters="filters" @exported="onExported" />
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2500">{{ snackbar.text }}</v-snackbar>
   </v-card>
 </template>
 
 <script setup>
+// Recibe los props desde TasksView.vue
+const props = defineProps({
+  tasks: Array,
+  loading: Boolean,
+  filters: Object,
+  setFilters: Function,
+  meta: Object,
+  users: { type: Array, default: () => [] },
+  createTaskFn: Function,
+  updateTaskFn: Function,
+  deleteTaskFn: Function,
+  saving: { type: Boolean, default: false }
+});
+
 import { ref, computed, watch } from 'vue';
-import { useTasks, TASK_STATUSES, TASK_PRIORITIES } from '../../composables/useTasks';
+import { TASK_STATUSES, TASK_PRIORITIES } from '../../composables/useTasks';
 import { useAuthHelpers } from '../../composables/useAuth';
 import TaskForm from './TaskForm.vue';
 import TaskDeleteDialog from './TaskDeleteDialog.vue';
 import TaskShow from './TaskShow.vue';
 import TaskExportDialog from './TaskExportDialog.vue';
 
-const { tasks, loading, filters, setFilters } = useTasks();
 const { auth, isAdmin } = useAuthHelpers();
 
 // Columnas sin etiquetas ni actualizado (se muestran en vista detalle)
@@ -88,14 +101,14 @@ const headers = computed(()=> [
 ]);
 
 // Dataset transformado para orden estable por email
-const tasksForTable = computed(()=> (tasks.value || []).map(t => ({
+const tasksForTable = computed(()=> (props.tasks || []).map(t => ({
   ...t,
   assigneeDisplay: t.assignee?.email || (typeof t.assignee === 'object' ? t.assignee?.email : (t.assignee?.name || t.assignee || '-')) || '-' // fallback defensivo
 })));
 
 // Estado de ordenamiento local
 const sortState = ref([
-  { key: filters.value.sortBy === 'assignedTo' ? 'assigneeDisplay' : (filters.value.sortBy || 'dueDate'), order: (filters.value.sortDir || 'asc') }
+  { key: props.filters.sortBy === 'assignedTo' ? 'assigneeDisplay' : (props.filters.sortBy || 'dueDate'), order: (props.filters.sortDir || 'asc') }
 ]);
 
 // Mapeo UI -> backend
@@ -105,8 +118,8 @@ watch(sortState, (val)=> {
   const first = Array.isArray(val) && val.length ? val[0] : null;
   if(!first) return;
   const backendKey = sortKeyMap[first.key] || first.key;
-  if(backendKey !== filters.value.sortBy || first.order !== filters.value.sortDir){
-    setFilters({ sortBy: backendKey, sortDir: first.order });
+  if(backendKey !== props.filters.sortBy || first.order !== props.filters.sortDir){
+    props.setFilters({ sortBy: backendKey, sortDir: first.order });
   }
 }, { deep: true });
 
@@ -141,13 +154,6 @@ function formatDateShort(d){
 }
 function isOverdue(t){ if(!t.dueDate) return false; return new Date(t.dueDate) < new Date() && t.status !== 'completada'; }
 function truncate(text, len=80){ if(!text) return ''; return text.length>len? text.slice(0,len)+'…': text; }
-
-function canManage(task){
-  if(isAdmin.value) return true;
-  if(!task) return false;
-  const uid = auth.user?.id;
-  return task.assignee?.id === uid || task.assignee === uid;
-}
 
 const dialogForm = ref(false);
 const dialogDelete = ref(false);

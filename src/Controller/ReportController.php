@@ -19,8 +19,6 @@ class ReportController extends AbstractController
     #[Route('/tasks', name: 'api_reports_tasks', methods: ['GET'])]
     public function tasks(Request $request) : Response
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
-
         $format = strtolower($request->query->get('format', 'csv'));
         if (!in_array($format, ['csv','pdf'], true)) {
             throw new ValidationException([], 'Formato inválido. Use csv o pdf');

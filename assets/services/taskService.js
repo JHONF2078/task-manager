@@ -7,7 +7,16 @@ function mapFilters(front){
   if(front.search) mapped.q = front.search;
   if(front.status) mapped.status = front.status;
   if(front.priority) mapped.priority = front.priority;
-  if(front.assignee) mapped.assignedTo = front.assignee; // id de usuario
+  // Mejor manejo de assignee: permitir 0, strings numéricas y evitar omitir por falsy.
+  if(front.hasOwnProperty('assignee')){
+    const raw = front.assignee;
+    if(raw !== null && raw !== undefined && raw !== ''){
+      const idNum = typeof raw === 'number' ? raw : parseInt(raw, 10);
+      if(!Number.isNaN(idNum)){
+        mapped.assignedTo = idNum;
+      }
+    }
+  }
   let from = front.dueFrom || '';
   let to = front.dueTo || '';
   if(from && to && from > to){ [from, to] = [to, from]; }
@@ -19,6 +28,7 @@ function mapFilters(front){
   if(front.limit) mapped.limit = front.limit;
   if(front.sortBy) mapped.sort = front.sortBy;
   if(front.sortDir) mapped.direction = front.sortDir;
+  // console.debug('[mapFilters]', mapped); // descomenta para depurar
   return mapped;
 }
 

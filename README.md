@@ -246,7 +246,7 @@ Lista de características de la exportación:
 - Reporte diario automático (por comando):
 Puedes generar un reporte de rango de fechas y enviarlo por correo (si no se pasa correo se genera localmente en /var/reports).:
     ```bash
-    php bin/console app:tasks:daily-report --from=2025-09-01 --to=2025-11-30 --email=jhonf2077@gmail.com
+    php bin/console app:tasks:daily-report --from=2025-09-01 --to=2025-11-30 --email=jhonzzz@gmail.com
     ```
 
 Capturas reporte de tareas en el front:

@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue';
+import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTaskStore } from '../stores/taskStore';
 import { fetchTasksApi, createTaskApi, updateTaskApi, deleteTaskApi } from '../services/taskService';
@@ -20,9 +20,10 @@ export function useTasks(){
   const store = useTaskStore();
   const { tasks, loading, error, filters, meta } = storeToRefs(store);
   const saving = ref(false);
-  const pendingTimer = ref(null);
   let lastHash = '';
   let requestCounter = 0;
+  let inFlight = false;      // indica si hay una petición en curso
+  let pending = false;       // indica que hubo cambios mientras había una petición en curso
 
   function filtersHash(f){
     return JSON.stringify([
@@ -32,39 +33,54 @@ export function useTasks(){
     ]);
   }
 
+  // Helper: determina si el rango de fechas está incompleto (sólo uno de los dos valores)
+  function isIncompleteDateRange(f){
+    const from = (f.dueFrom || '').trim();
+    const to   = (f.dueTo || '').trim();
+    return (from && !to) || (!from && to); // verdadero si sólo uno está seteado
+  }
+
   async function fetchTasks(){
+    console.log('[tasks] fetchTasks called', { filters: { ...filters.value } });
+    // Evitar llamada si el rango está incompleto (requisito solicitado)
+    if (isIncompleteDateRange(filters.value)) return; // esperar a rango completo
+
     const currentHash = filtersHash(filters.value);
     if(currentHash === lastHash){
-      return; // evita petición redundante idéntica
+      return; // ya obtenidos para este hash
     }
+
+    // Si ya hay una petición en curso, marcamos que hay cambios pendientes y salimos.
+    if (inFlight) {
+      pending = true;
+      return;
+    }
+
+    inFlight = true;
+    const startHash = currentHash; // hash de esta ejecución
     const reqId = ++requestCounter;
     store.setLoading(true);
     store.setError('');
+
     try {
       const { meta: m, data } = await fetchTasksApi(filters.value);
-      // Si llegó una respuesta antigua la descartamos
-      if(reqId !== requestCounter) return;
+      if(reqId !== requestCounter) return; // respuesta obsoleta
       store.setTasks(data);
       store.setMeta(m);
-      lastHash = currentHash;
+      lastHash = startHash; // sólo confirmamos hash cuando termina correctamente
     } catch(e){
-      if(reqId !== requestCounter) return; // ignorar errores de peticiones obsoletas
+      if(reqId !== requestCounter) return;
       store.setError(e.message || 'Error al cargar tareas');
     } finally {
       if(reqId === requestCounter) store.setLoading(false);
+      inFlight = false;
+      if (pending) { // ejecutar última petición pendiente (agrupa múltiples cambios en una sola)
+        pending = false;
+        // Usamos setTimeout 0 para permitir que se apliquen nuevas mutaciones antes del siguiente cálculo
+        setTimeout(()=> fetchTasks(), 0);
+      }
     }
   }
-
-  function scheduleFetch(){
-    if(pendingTimer.value) clearTimeout(pendingTimer.value);
-    pendingTimer.value = setTimeout(()=>{
-      fetchTasks();
-    }, 180); // debounce 180ms
-  }
-
-  // Reemplazamos watch directo de fetch por uno con debounce + hash
-  onMounted(()=> { fetchTasks(); });
-  watch(()=> filters.value, scheduleFetch, { deep: true });
 
   async function createTask(payload){
     saving.value = true;
@@ -93,10 +109,16 @@ export function useTasks(){
   }
 
   function setFilters(f){
+    const before = JSON.stringify(store.filters);
     store.setFilters(f);
-    // scheduleFetch(); // el watch ya lo hará
+    const after = JSON.stringify(store.filters);
+    if(before !== after){
+      console.log('[tasks] setFilters changed', f);
+    } else {
+      console.log('[tasks] setFilters ignored (no changes)');
+    }
   }
-  function resetFilters(){ store.resetFilters(); /* watch disparará */ }
+  function resetFilters(){ store.resetFilters(); }
   function setPage(p){ store.setPage(p); }
   function setLimit(l){ store.setLimit(l); }
 

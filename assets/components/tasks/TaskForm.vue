@@ -49,11 +49,11 @@
 <script setup>
 import { ref, reactive, watch, computed } from 'vue';
 import { useTasks, TASK_STATUSES, TASK_PRIORITIES } from '../../composables/useTasks';
-import { useUsers } from '../../composables/useUsers';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  task: { type: Object, default: null }
+  task: { type: Object, default: null },
+  users: { type: Array, default: () => [] } // nueva prop con usuarios ya cargados
 });
 const emit = defineEmits(['update:modelValue','created','updated']);
 
@@ -63,11 +63,10 @@ const model = computed({
 });
 
 const { createTask, updateTask, saving } = useTasks();
-const { users } = useUsers();
 
 const statusItems = TASK_STATUSES.map(s=> ({ title: s.label, value: s.value }));
 const priorityItems = TASK_PRIORITIES.map(p=> ({ title: p.label, value: p.value }));
-const assigneeItems = computed(()=> users.value.map(u=>({ label: u.name || u.email, value: u.id })));
+const assigneeItems = computed(()=> (props.users || []).map(u=>({ label: u.name || u.email, value: u.id })));
 
 const blank = ()=>({
   title: '',

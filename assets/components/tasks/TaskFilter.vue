@@ -33,44 +33,100 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch, computed, onBeforeUnmount } from 'vue';
-import { useTasks, TASK_STATUSES, TASK_PRIORITIES } from '../../composables/useTasks';
-import { useUsers } from '../../composables/useUsers';
+// Recibe los props desde TasksView.vue
+const props = defineProps({
+  filters: Object,
+  setFilters: Function,
+  resetFilters: Function,
+  fetchTasks: Function,
+  statuses: Array,
+  priorities: Array,
+  users: { type: Array, default: () => [] }
+});
 
-const { filters, setFilters, resetFilters } = useTasks();
-const { users } = useUsers(); // para asignados
+import { reactive, ref, watch, computed, onBeforeUnmount, onMounted, nextTick } from 'vue';
 
-const statusItems = TASK_STATUSES.map(s=> ({ title: s.label, value: s.value }));
-const priorityItems = TASK_PRIORITIES.map(p=> ({ title: p.label, value: p.value }));
+let ignoreInitial = true;
+const local = reactive({ ...props.filters });
+const tagInput = ref(props.filters.tags || []);
 
-// Opciones formateadas para el select de asignado: ahora siempre email
-const assigneeOptions = computed(() => (users.value || [])
+onMounted(async () => {
+  Object.assign(local, { ...props.filters });
+  tagInput.value = props.filters.tags || [];
+  await nextTick();
+  ignoreInitial = false;
+});
+
+// Items para selects de estado y prioridad (Vuetify reconoce title/value)
+const statusItems = computed(() => (props.statuses || []).map(s => ({ title: s.label || s.title || s.value, value: s.value })));
+const priorityItems = computed(() => (props.priorities || []).map(p => ({ title: p.label || p.title || p.value, value: p.value })));
+
+// Opciones formateadas para el select de asignado: siempre email
+const assigneeOptions = computed(() => (props.users || [])
   .map(u => ({ value: u.id, label: u.email }))
   .sort((a,b)=> a.label.localeCompare(b.label, 'es')));
 
-const local = reactive({ ...filters.value });
-const tagInput = ref(filters.value.tags || []);
-const debounceId = ref(null);
+const searchDebounceId = ref(null);
+const dateDebounceId = ref(null);
+let lastAppliedSignature = '';
 
-watch(users, ()=>{/* trigger UI refresh */});
+function signature(obj){
+  return JSON.stringify([
+    obj.search,obj.status,obj.priority,obj.assignee,[...(obj.tags||[])].sort(),obj.dueFrom,obj.dueTo,obj.sortBy,obj.sortDir
+  ]);
+}
+
+watch(()=> props.users, ()=>{/* trigger UI refresh */});
 watch(()=> local.search, () => {
-  if(debounceId.value) clearTimeout(debounceId.value);
-  debounceId.value = setTimeout(()=> apply(), 400);
+  if(ignoreInitial) return;
+  if(searchDebounceId.value) clearTimeout(searchDebounceId.value);
+  searchDebounceId.value = setTimeout(()=> apply(), 400);
 });
 
-onBeforeUnmount(()=> { if(debounceId.value) clearTimeout(debounceId.value); });
+// Nuevo: observar rango de fechas de forma combinada con debounce.
+watch([() => local.dueFrom, () => local.dueTo], () => {
+  if(ignoreInitial) return;
+  if(dateDebounceId.value) clearTimeout(dateDebounceId.value);
+  dateDebounceId.value = setTimeout(() => {
+    const from = (local.dueFrom || '').trim();
+    const to   = (local.dueTo || '').trim();
+    // Solo aplicamos si ambos están vacíos (limpieza) o ambos llenos (rango completo)
+    if((from && to) || (!from && !to)){
+      // Normalizamos: si solo uno se limpió, aseguramos limpiar el otro para mantener coherencia
+      if(!from && !to){ local.dueFrom=''; local.dueTo=''; }
+      apply();
+    }
+  }, 500);
+});
+
+onBeforeUnmount(()=> {
+  if(searchDebounceId.value) clearTimeout(searchDebounceId.value);
+  if(dateDebounceId.value) clearTimeout(dateDebounceId.value);
+});
 
 function apply(){
-  setFilters({ ...local, tags: tagInput.value });
+  const from = (local.dueFrom || '').trim();
+  const to   = (local.dueTo || '').trim();
+  if( (from && !to) || (!from && to) ){
+    return; // rango incompleto, no aplicar todavía
+  }
+  const payload = { ...local, tags: tagInput.value };
+  const sig = signature(payload);
+  if(sig === lastAppliedSignature){
+    return; // filtros idénticos, no refetch
+  }
+  lastAppliedSignature = sig;
+  props.setFilters(payload);
+  props.fetchTasks(); // una sola petición por cambio aplicado
 }
 function reset(){
-  resetFilters();
-  Object.assign(local, { ...filters.value });
+  props.resetFilters();
+  Object.assign(local, { ...props.filters });
   tagInput.value = [];
-  apply();
+  lastAppliedSignature = '';
+  // Ya no llamamos a apply aquí, solo actualizamos los filtros locales
 }
 function updateTags(){
-  // ya está en tagInput, sólo aplicamos diferido
   apply();
 }
 </script>

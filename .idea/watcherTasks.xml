@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ProjectTasksOptions">
-    <TaskOptions isEnabled="true">
+    <TaskOptions isEnabled="false">
       <option name="arguments" value="vendor\bin\php-cs-fixer fix --config=.php-cs-fixer.dist.php --quiet &lt;span&gt;FilePath&lt;/span&gt;" />
       <option name="checkSyntaxErrors" value="true" />
       <option name="description" />
