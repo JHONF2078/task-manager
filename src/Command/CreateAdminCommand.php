@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Command;
 
@@ -19,7 +19,7 @@ class CreateAdminCommand extends Command
         parent::__construct();
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output) : int
     {
         $existing = $this->userRepository->findOneBy(['email' => 'admin@miapp.com']);
         if ($existing) {

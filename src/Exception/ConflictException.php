@@ -1,3 +1,7 @@
-<?php
+<?php declare(strict_types=1);
+
 namespace App\Exception;
-class ConflictException extends \RuntimeException {}
+
+class ConflictException extends \RuntimeException
+{
+}

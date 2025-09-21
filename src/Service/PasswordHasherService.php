@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Service;
 
@@ -16,29 +16,37 @@ class PasswordHasherService
      */
     public function __construct(int|string|null $algo = null, array $options = [])
     {
-        $this->algo = $this->normalizeAlgo($algo);
+        $this->algo    = $this->normalizeAlgo($algo);
         $this->options = $options;
     }
 
-    private function normalizeAlgo(int|string|null $algo): int|string
+    private function normalizeAlgo(int|string|null $algo) : int|string
     {
-        if (is_int($algo) || (is_string($algo) && $algo !== '')) { return $algo; }
+        if (is_int($algo) || (is_string($algo) && $algo !== '')) {
+            return $algo;
+        }
         if ($algo === null || $algo === '' || $algo === 'auto' || $algo === 'default') {
             return PASSWORD_DEFAULT; // Puede ser string o int según versión
         }
         $map = [
-            'bcrypt' => defined('PASSWORD_BCRYPT') ? PASSWORD_BCRYPT : PASSWORD_DEFAULT,
-            'argon2i' => defined('PASSWORD_ARGON2I') ? PASSWORD_ARGON2I : PASSWORD_DEFAULT,
+            'bcrypt'   => defined('PASSWORD_BCRYPT') ? PASSWORD_BCRYPT : PASSWORD_DEFAULT,
+            'argon2i'  => defined('PASSWORD_ARGON2I') ? PASSWORD_ARGON2I : PASSWORD_DEFAULT,
             'argon2id' => defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT,
         ];
         $key = strtolower((string)$algo);
         return $map[$key] ?? PASSWORD_DEFAULT;
     }
 
-    public function hash(string $plain): string
-    { return password_hash($plain, $this->algo, $this->options); }
-    public function verify(string $plain, string $hash): bool
-    { return password_verify($plain, $hash); }
-    public function needsRehash(string $hash): bool
-    { return password_needs_rehash($hash, $this->algo, $this->options); }
+    public function hash(string $plain) : string
+    {
+        return password_hash($plain, $this->algo, $this->options);
+    }
+    public function verify(string $plain, string $hash) : bool
+    {
+        return password_verify($plain, $hash);
+    }
+    public function needsRehash(string $hash) : bool
+    {
+        return password_needs_rehash($hash, $this->algo, $this->options);
+    }
 }

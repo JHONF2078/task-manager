@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Exception;
 
@@ -12,9 +12,7 @@ class InvalidCredentialsException extends HttpException
         \Throwable $previous = null,
         array $headers = [],
         int $statusCode = 401
-    )
-    {
+    ) {
         parent::__construct($statusCode, $message, $previous, $headers, $code);
     }
 }
-

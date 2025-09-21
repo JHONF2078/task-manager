@@ -1,99 +1,239 @@
-# MiApp - Estrategia de Autenticación, Refresh Token y CSRF
+# task-manager
 
-Este documento describe la arquitectura implementada para autenticación JWT (access token en memoria/localStorage + refresh token en cookie HttpOnly), obtención y uso de CSRF tokens, y manejo centralizado de peticiones HTTP en el frontend (Vue 3 + Pinia) y backend (Symfony).
+![PHP Version](https://img.shields.io/badge/PHP-8.3-%23777BB4?logo=php)
+![Symfony](https://img.shields.io/badge/Symfony-7.2-black?logo=symfony)
+![Vue](https://img.shields.io/badge/Vue.js-3.x-%234FC08D?logo=vuedotjs)
+![License](https://img.shields.io/badge/Status-Dev-green)
 
-## Resumen de la Estrategia
-
-- **Access Token (JWT)**: Se guarda en `localStorage` (clave `auth_token`) junto con metadatos (`token_type`, `expires_at`, `issued_at`, `auth_user`).
-- **Refresh Token**: Nunca se expone al frontend. El backend lo envía y almacena en una cookie HttpOnly/SameSite (asumido) y se usa en `/api/auth/token/refresh`.
-- **CSRF Token**: Se obtiene mediante GET a `/api/csrf` y se cachea en memoria (no en localStorage). Se adjunta en el header `X-CSRF-Token` únicamente en métodos mutadores (POST, PUT, PATCH, DELETE) que no estén en la lista de endpoints públicos.
-- **Wrapper HTTP**: `assets/services/http.js` añade automáticamente Authorization, CSRF y maneja 401/419 con reintentos controlados.
-- **Refresh Silencioso**: Ante un 401 en un endpoint protegido se intenta automáticamente un refresh (una sola vez) y luego se re-lanza la petición original. Si falla, se fuerza logout.
-- **Bootstrap Inicial**: Al iniciar la app se:
-  1. Lanza `ensureCsrf()` de forma temprana (no bloqueante) para tener el token disponible cuanto antes.
-  2. Ejecuta `auth.bootstrap()` que, si no hay access token válido o está expirado, intenta `silentRefresh()`.
-
-## Flujo de Inicio de Sesión
-1. Usuario envía credenciales a `/api/login` (con POST JSON).
-2. Respuesta incluye `{ token, token_type, expires_at, issued_at, user }`.
-3. Se persiste en el store (`authStore`) y `localStorage`.
-4. `Authorization: <token_type> <token>` se adjuntará automáticamente desde el wrapper HTTP en futuras peticiones.
-
-## Refresco de Token
-- Implícito: un 401 en un endpoint protegido dispara `refreshTokenApi()` y reintenta una sola vez.
-- Expiración Proactiva: `auth.bootstrap()` intenta un refresh silencioso si el token inicial falta o está expirado.
-- No se usa `setInterval`; el refresh se hace on-demand, reduciendo peticiones innecesarias.
-
-## Manejo de CSRF
-- `ensureCsrf()` evita llamadas duplicadas mediante una promesa `pending` en `csrfService`.
-- Sólo se envía `X-CSRF-Token` en métodos mutadores y para endpoints NO públicos.
-- Código de respuesta 419 (CSRF inválido) induce una re-obtención y un único reintento automático.
-
-## Lista de Endpoints Públicos (no requieren Authorization / CSRF)
-Definidos en `AUTH_PUBLIC_ENDPOINTS` (regex) dentro de `http.js`:
-```
-/api/login
-/api/register
-/api/auth/password/forgot
-/api/auth/password/reset
-/api/auth/token/refresh
-/api/auth/logout
-/api/csrf
-```
-
-## Store de Autenticación (`authStore.js`)
-Responsabilidades:
-- Persistencia local de datos de sesión.
-- Cálculo de `isAuthenticated`, expiración y `expiresInMs`.
-- `initializeSession(payload)` para normalizar la respuesta del backend.
-- `silentRefresh()` no fuerza logout en caso de error; la siguiente petición 401 se encargará.
-- `logout()` limpia estado y storage, y notifica al backend.
-
-## Seguridad & Consideraciones
-- El refresh token NO se expone al JS (cookie HttpOnly -> mitigación XSS).
-- CSRF token se mantiene sólo en memoria -> si la pestaña se cierra se obtiene de nuevo.
-- Access token en `localStorage`: facilita tabs múltiples; riesgo XSS mitigado parcialmente con buenas prácticas (CSP recomendable, sanitización y no inlining de datos peligrosos).
-- Logout siempre intenta invalidar en backend, pero limpia local aunque falle.
-
-## Errores y Mensajes
-- 401 tras fallo de refresh => `logout()` y propagación de error.
-- 419 tras segundo intento => error explícito "CSRF inválido".
-- Otros códigos no `ok` => mensaje derivado de `data.error || data.message` o fallback genérico.
-
-## Cómo Extender
-- Añadir endpoint público: insertar regex en `AUTH_PUBLIC_ENDPOINTS`.
-- Añadir cabeceras comunes: modificar `baseFetch` antes del `fetch`.
-- Forzar refresh manual: llamar a `refreshTokenApi()` y `auth.initializeSession()`.
-
-## Secuencia Resumida de una Petición Protegida
-1. Componente llama `httpPost('/api/tasks', {...})`.
-2. `baseFetch` añade Authorization y, al ser POST y no público, asegura CSRF.
-3. Backend valida CSRF y JWT.
-4. Si JWT expiró -> backend 401 -> `baseFetch` intenta refresh -> reintenta.
-5. Si refresh falla -> logout -> error hacia el componente.
-
-## Scripts Útiles
-Frontend (Webpack Encore):
-```
-npm run dev        # build de desarrollo
-npm run watch      # watch
-npm run dev-server # dev-server con HMR
-npm run build      # build producción
-```
-
-Symfony:
-```
-php bin/console cache:clear
-php bin/console doctrine:migrations:migrate
-php bin/console server:dump  # si se usa symfony local server (ajustar según setup)
-```
-
-## Próximas Mejoras (Ideas)
-- Añadir almacenamiento cifrado del access token (ej: WebCrypto) si se considera necesario.
-- Implementar expiración inminente -> pre-refresh (ej: si < 30s restante).
-- Integrar cola de peticiones dobladas durante refresh para evitar tormenta de 401.
-- CSP estricta y Subresource Integrity para mejorar mitigación XSS.
+Aplicación para la gestión de tareas y usuarios.
 
 ---
-Cualquier cambio adicional en la estrategia debe documentarse aquí para mantener consistencia.
+## 🧭 Índice
+- [📄 Descripción](#-descripción)
+- [🛠️ Detalles técnicos](#️-detalles-técnicos)
+  - [🏗️ Arquitectura general](#-arquitectura-general)
+  - [🔐 Autenticación y sesión](#-autenticación-y-sesión)
+  - [🔑 Gestión de contraseñas](#-gestión-de-contraseñas)
+  - [🗃️ Modelo de datos principal](#-modelo-de-datos-principal)
+  - [⚙️ Rendimiento y optimización](#-rendimiento-y-optimización)
+  - [🧪 Estándares y calidad](#-estándares-y-calidad)
+- [🧩 Aplicación](#-aplicación)
+  - [🏠 Vista principal](#-vista-principal)
+  - [🧱 UX y componentes](#-ux-y-componentes)
+  - [📘 Endpoints destacados (REST)](#-endpoints-destacados-rest)
+- [🔄 Interacción entre Backend y Frontend](#-interacción-entre-backend-y-frontend)
+- [🖼️ Capturas de pantalla de la aplicación](#-capturas-de-pantalla-de-la-aplicación)
+  - [🔐 1. Autenticación (Auth)](#-1-autenticación-auth)
+  - [👥 2. Gestión de usuarios](#-2-gestión-de-usuarios)
+  - [🗂️ 3. Gestión de tareas](#-3-gestión-de-tareas)
+- [✨ Funcionalidades especiales](#-funcionalidades-especiales)
+  - [📬 Entorno de pruebas de correo](#-entorno-de-pruebas-de-correo)
+  - [👑 Usuario administrador inicial](#-usuario-administrador-inicial)
+- [🔧 Configuración de entorno (variables locales no versionadas)](#-configuración-de-entorno-variables-locales-no-versionadas)
 
+---
+## 📄 Descripción
+`task-manager` permite crear, listar, actualizar y eliminar tareas, así como administrar usuarios relacionados.
+
+## 🛠️ Detalles técnicos
+### 🏗️ Arquitectura general
+- Monolito Symfony 7.2 (backend PHP 8.3)  + Vue 3 (Composition API y con Vuetify para UI) embebido.
+- Comunicación: API REST JSON sobre HTTP (endpoints /api/*).
+- Estado global en frontend: Pinia + composables (auth, tasks, users).
+- Seguridad: JWT (access token) + Refresh Token (almacenado en BD) + CSRF para mutaciones.
+- Validación: Symfony Validator en Entidades y DTOs + reglas mínimas en frontend.
+- Persistencia: Doctrine ORM sobre MySQL 8.4.3 con migraciones.
+- Estándares: PSR-12 (apoyado por PHP-CS-Fixer), tipado estricto (declare(strict_types=1) en PHP), uso de DTOs para separar capa HTTP de dominio.
+- posibilidad de trazar EXPLAIN mediante endpoint dedicado.
+
+### 🔐 Autenticación y sesión
+- Login devuelve JWT de corta duración (access token) + refresh token persistido (hash) en tabla refresh_token.
+- Renovación silenciosa vía endpoint /api/auth/token/refresh (usa cookie HttpOnly / contexto seguro si se configura) y actualización del estado Pinia.
+- Logout invalida refresh token (revoca registro) y limpia storage local.
+- Protección CSRF activada para mutaciones no públicas; token obtenido desde /api/csrf y enviado en cabecera X-CSRF-Token.
+
+### 🔑 Gestión de contraseñas
+- Hash con password_hash() (algoritmo auto / bcrypt/argon según PHP) centralizado en PasswordHasherService.
+- Flujo de recuperación: generación de reset token con TTL configurable, envío de email, validación de token único y consumo al usarlo.
+
+### 🗃️ Modelo de datos principal
+- User: email único, roles (json), estado activo, timestamps, campos auxiliares de recuperación.
+- Task: título, descripción, estado, prioridad, due_date, asignado a (FK usuario), etiquetas (tags/categories json).
+- RefreshToken: user_id, token_hash, expiración, metadata de auditoría (revoked_at, last_used_at, replaced_by).
+- messenger_messages: almacenamiento transporte Doctrine para tareas asíncronas futuras.
+
+![bd.png](docs/images/others/bd.png)
+
+### ⚙️ Rendimiento y optimización
+- Debounce & hashing en filtros de tareas para evitar solicitudes redundantes.
+- Endpoint /api/tasks/explain para analizar planes de ejecución (EXPLAIN / ANALYZE adaptable según motor).
+
+EXPLAIN ejemplo:
+```markdown
+
+http://localhost:8000/api/tasks/explain?q=test&status=en_progreso&analyze=true
+
+```
+
+### 🧪 Estándares y calidad
+- PSR-12 verificado con PHP CS Fixer (reglas comunes + formateo uniforme).
+- Uso de atributos para Constraints (Symfony 6+/7 style) y rutas (#[] attributes).
+- Código de servicios orientado a inyección de dependencias (constructor) y segregación de responsabilidades (AuthService, PasswordResetService, etc.).
+
+PSR-12 comandos útiles:
+```markdown
+# Ver violaciones (sin modificar archivos)
+composer run cs:check
+
+# Arreglar automáticamente
+composer run cs:fix
+```
+
+---
+
+## ✨ Informacion Importante
+
+### 📬 Entorno de pruebas de correo
+
+Actualmente, los correos generados por la aplicación (recuperación de contraseña y reportes) se envían a Mailtrap, 
+un entorno seguro para pruebas de email. Esto permite verificar el contenido y formato de los correos sin riesgo de enviarlos
+a usuarios reales durante el desarrollo.
+
+Para revisar los correos recibidos, accede a tu bandeja de Mailtrap y selecciona el inbox configurado para este proyecto.
+
+
+### 👑 Usuario administrador inicial
+
+La aplicación crea automáticamente un usuario administrador inicial con el correo `admin@miapp.com` y la contraseña `admin123` (encriptada), mediante un Command interno de Symfony. Este proceso no requiere que ejecutes manualmente el comando en consola: el usuario se genera por el propio código cuando es necesario, asegurando que siempre exista un acceso administrativo desde el primer inicio.
+
+
+---
+
+## 🧩 Aplicación
+
+### 🏠 Vista principal
+![Layout / Home](docs/images/general/layout.png)
+
+Layout principal:
+- Barra lateral fija con accesos: Home, Usuarios, Tareas y Logout.
+- Panel central con bloques iniciales (listados) sobre tareas y navegación rápida.
+- UI basada en Vuetify: botones, chips y tipografía consistente.
+- Diseño responsive: la barra se colapsa en pantallas pequeñas.
+
+### 🧱 UX y componentes
+- Componentes atómicos (formularios de auth, listas, diálogos modales para CRUD de tareas y confirmaciones).
+- Uso de Vuetify para consistencia visual y accesibilidad básica (chips, dialogs, forms, alerts).
+- Separación de lógica de datos en composables (useTasks, useAuth, useUsers) para independencia UI.
+
+### 📘 Endpoints destacados (REST)
+La documentación completa y navegable de la API se expone mediante Swagger UI (OpenAPI):
+
+- Documentación interactiva (Swagger UI): `http://localhost:8000/api/docs`
+- Esquema OpenAPI (JSON): `http://localhost:8000/api/docs.json`
+
+Desde esa interfaz puedes:
+- Probar endpoints directamente (autenticándote con el JWT en el botón Authorize).
+- Ver parámetros, modelos de entrada/salida y códigos de respuesta.
+- Descargar el spec para integraciones externas o generación de SDKs.
+
+## 🔄 Interacción entre Backend y Frontend
+
+El backend (Symfony) expone una API RESTful que gestiona la autenticación, usuarios y tareas. El frontend (Vue 3) consume estos servicios mediante peticiones HTTP usando composables y servicios personalizados:
+
+- **Servicios (assets/services/):** Encapsulan la lógica de comunicación con la API (autenticación, tareas, usuarios, CSRF, etc.), facilitando el uso y reutilización en los componentes.
+- **Composables (assets/composables/):** Proveen funciones reactivas para manejar el estado y lógica de negocio (useAuth, useTasks, useUsers), integrando los servicios y facilitando la composición en los componentes Vue.
+- **Pinia (assets/stores/):** Se utiliza para la gestión global del estado de la aplicación (usuarios, autenticación, tareas), permitiendo compartir datos entre componentes de forma eficiente y reactiva.
+- **Componentes y Vistas (assets/views/, assets/components/):** Los formularios y vistas consumen los composables y stores para interactuar con el backend, mostrar datos y gestionar acciones del usuario.
+
+El flujo típico es:
+1. El usuario interactúa con un formulario o vista.
+2. El componente llama a un composable, que usa un servicio para enviar la petición al backend.
+3. El backend responde y el composable actualiza el estado global mediante Pinia.
+4. Los componentes se actualizan automáticamente mostrando los cambios.
+
+Esta arquitectura permite una integración eficiente, escalable y mantenible entre frontend y backend, aprovechando las capacidades modernas de Vue 3 y Symfony.
+
+### 🖼️ Capturas de pantalla de la aplicación
+
+A continuación se muestran ejemplos visuales de las principales funcionalidades de la aplicación.
+
+### 🔐 1. Autenticación (Auth)
+- Inicio de sesión
+- Registro de usuario
+- Recuperación de contraseña
+
+Capturas:
+
+**Inicio de sesión**
+![Login](docs/images/auth/login.png)
+
+**Registro de usuario**
+![Registro](docs/images/auth/register.png)
+
+**Recuperacion de Contraseña**
+![recovery_send.png](docs/images/auth/recovery_send.png)
+
+**Email en Mailtrap**
+![mailtrap.png](docs/images/auth/mailtrap.png)
+
+**Cambio de Contraseña**
+![change_password.png](docs/images/auth/change_password.png)
+
+### 👥 2. Gestión de usuarios
+Descripción general: administración y visualización de los usuarios.
+
+#### 👑 2.1 Rol Admin
+Permisos:
+- ver listado de usuarios.
+- Buscar por correo.
+- Crear nuevos usuarios.
+- Editar y desactivar usuarios existentes.
+
+Capturas:
+
+**Listado de usuarios**  
+![admin_list.png](docs/images/users/admin_list.png)
+
+
+#### 👤 2.2 Rol User
+Permisos:
+- Ver listado de usuarios.
+- Ver detalle de usuario.
+- Buscar por correo.
+- No puede crear, editar ni desactivar a otros usuarios.
+
+Capturas:
+
+**Listado de usuarios**  
+![user_list.png](docs/images/users/user_list.png)
+
+
+### 🗂️ 3. Gestión de tareas
+Listado, filtrado, ordenación y detalle de tareas. Incluye exportación y controles de estado / prioridad.
+
+#### 👑 3.1 Rol Admin
+Permisos:
+- Ver listado de tareas.
+- Buscar, Filtrar y Ordenar.
+- Crear tareas.
+- Editar cualquier tarea, cambiar asignación, estado, prioridad y fechas..
+- Eliminar tareas.
+- Ver y exportar reporte en csv o pdf.
+
+
+Capturas:
+
+**Listado de tareas**  
+![admin_tasks.png](docs/images/tasks/admin_tasks.png)
+
+
+#### 👤 3.2 Rol User
+Permisos:
+- Ver listado de tareas.
+- Buscar, Filtrar y Ordenar.
+- Ver detalle de tarea.
+- Exportar reporte en csv o pdf.
+- No puede crear, editar ni eliminar (los botones se ocultan si no es Admin).
+
+Capturas: 
+![user_task.png](docs/images/tasks/user_task.png)

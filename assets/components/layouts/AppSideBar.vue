@@ -23,8 +23,10 @@ import { useAuthStore } from '../../stores/authStore';
 const router = useRouter();
 const auth = useAuthStore();
 
-function handleLogout(){
-  auth.logout();
+async function handleLogout(){
+  // Esperar a que se complete el proceso de logout (limpieza de token) antes de navegar
+  try { await auth.logout(); } catch(_) {}
+  // Limpieza extra defensiva (puede mantenerse o eliminarse si ya lo hace la store)
   try { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user'); } catch(_) {}
   router.push('/login');
 }

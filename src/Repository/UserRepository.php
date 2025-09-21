@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Repository;
 
@@ -15,7 +15,7 @@ class UserRepository extends ServiceEntityRepository
 
     // Métodos personalizados para User
 
-    public function countAdmins(): int
+    public function countAdmins() : int
     {
         return (int) $this->createQueryBuilder('u')
             ->select('COUNT(u.id)')
@@ -27,7 +27,7 @@ class UserRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
-    public function isLastAdmin(User $user): bool
+    public function isLastAdmin(User $user) : bool
     {
         if (!in_array('ROLE_ADMIN', $user->getRoles(), true)) {
             return false; // No es admin actualmente

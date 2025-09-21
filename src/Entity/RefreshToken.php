@@ -1,4 +1,5 @@
-<?php
+<?php declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\RefreshTokenRepository;
@@ -38,22 +39,72 @@ class RefreshToken
     #[ORM\Column(name: 'last_used_at', type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $lastUsedAt = null;
 
-    public function getId(): ?int { return $this->id; }
-    public function getUser(): User { return $this->user; }
-    public function setUser(User $user): void { $this->user = $user; }
-    public function getTokenHash(): string { return $this->tokenHash; }
-    public function setTokenHash(string $hash): void { $this->tokenHash = $hash; }
-    public function getExpiresAt(): \DateTimeInterface { return $this->expiresAt; }
-    public function setExpiresAt(\DateTimeInterface $d): void { $this->expiresAt = $d; }
-    public function getCreatedAt(): \DateTimeInterface { return $this->createdAt; }
-    public function setCreatedAt(\DateTimeInterface $d): void { $this->createdAt = $d; }
-    public function getRevokedAt(): ?\DateTimeInterface { return $this->revokedAt; }
-    public function revoke(string $reason = ''): void { $this->revokedAt = new \DateTimeImmutable(); }
-    public function isRevoked(): bool { return $this->revokedAt !== null; }
-    public function isExpired(): bool { return $this->expiresAt <= new \DateTimeImmutable(); }
-    public function getReplacedBy(): ?string { return $this->replacedBy; }
-    public function setReplacedBy(?string $hash): void { $this->replacedBy = $hash; }
-    public function getLastUsedAt(): ?\DateTimeInterface { return $this->lastUsedAt; }
-    public function markUsed(): void { $this->lastUsedAt = new \DateTimeImmutable(); }
+    public function getId() : ?int
+    {
+        return $this->id;
+    }
+    public function getUser() : User
+    {
+        return $this->user;
+    }
+    public function setUser(User $user) : void
+    {
+        $this->user = $user;
+    }
+    public function getTokenHash() : string
+    {
+        return $this->tokenHash;
+    }
+    public function setTokenHash(string $hash) : void
+    {
+        $this->tokenHash = $hash;
+    }
+    public function getExpiresAt() : \DateTimeInterface
+    {
+        return $this->expiresAt;
+    }
+    public function setExpiresAt(\DateTimeInterface $d) : void
+    {
+        $this->expiresAt = $d;
+    }
+    public function getCreatedAt() : \DateTimeInterface
+    {
+        return $this->createdAt;
+    }
+    public function setCreatedAt(\DateTimeInterface $d) : void
+    {
+        $this->createdAt = $d;
+    }
+    public function getRevokedAt() : ?\DateTimeInterface
+    {
+        return $this->revokedAt;
+    }
+    public function revoke(string $reason = '') : void
+    {
+        $this->revokedAt = new \DateTimeImmutable();
+    }
+    public function isRevoked() : bool
+    {
+        return $this->revokedAt !== null;
+    }
+    public function isExpired() : bool
+    {
+        return $this->expiresAt <= new \DateTimeImmutable();
+    }
+    public function getReplacedBy() : ?string
+    {
+        return $this->replacedBy;
+    }
+    public function setReplacedBy(?string $hash) : void
+    {
+        $this->replacedBy = $hash;
+    }
+    public function getLastUsedAt() : ?\DateTimeInterface
+    {
+        return $this->lastUsedAt;
+    }
+    public function markUsed() : void
+    {
+        $this->lastUsedAt = new \DateTimeImmutable();
+    }
 }
-

@@ -1,4 +1,7 @@
-<?php
-namespace App\Exception;
-class RefreshTokenInvalidException extends \RuntimeException { }
+<?php declare(strict_types=1);
 
+namespace App\Exception;
+
+class RefreshTokenInvalidException extends \RuntimeException
+{
+}

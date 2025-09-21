@@ -34,7 +34,7 @@ const router = createRouter({
   routes,
 });
 
-const publicAuthRoutes = new Set(['login','register','forgot-password','reset-password']);
+const publicAuthRoutes = new Set(['login','register','forgot-password']);
 
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore();
@@ -51,6 +51,7 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'home' });
   }
 
+  // Ruta de reset-password siempre accesible (autenticado o no) para permitir cambiar contraseña.
   next();
 });
 

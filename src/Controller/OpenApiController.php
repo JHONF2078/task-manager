@@ -1,19 +1,20 @@
-<?php
+<?php declare(strict_types=1);
+
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Yaml\Yaml;
 
 #[Route('/api')] // base for API docs endpoints
 class OpenApiController extends AbstractController
 {
     #[Route('/docs.json', name: 'api_docs_json', methods: ['GET'])]
-    public function jsonSpec(): JsonResponse
+    public function jsonSpec() : JsonResponse
     {
-        $file = $this->getParameter('kernel.project_dir').'/config/openapi.yaml';
+        $file = $this->getParameter('kernel.project_dir') . '/config/openapi.yaml';
         if (!is_file($file)) {
             return new JsonResponse(['error' => 'OpenAPI spec no encontrada'], 404);
         }
@@ -26,7 +27,7 @@ class OpenApiController extends AbstractController
     }
 
     #[Route('/docs', name: 'api_docs_ui', methods: ['GET'])]
-    public function swaggerUi(): Response
+    public function swaggerUi() : Response
     {
         // Simple Swagger UI via CDN pointing to /api/docs.json
         $html = <<<HTML
@@ -57,4 +58,3 @@ HTML;
         return new Response($html);
     }
 }
-

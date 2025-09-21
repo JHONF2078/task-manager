@@ -1,5 +1,7 @@
-<?php
+<?php declare(strict_types=1);
+
 namespace App\Dto;
+
 use Symfony\Component\Validator\Constraints as Assert;
 
 class TaskUpdateInput
@@ -26,4 +28,3 @@ class TaskUpdateInput
     // Array de strings (tags). Puede llegar null
     public array|string|null $categories = null;
 }
-

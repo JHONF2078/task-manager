@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Repository;
 
@@ -12,35 +12,36 @@ class AuthRepository
     {
     }
 
-    private function repo(): ObjectRepository
+    private function repo() : ObjectRepository
     {
         return $this->em->getRepository(User::class);
     }
 
-    public function findByEmail(string $email): ?User
+    public function findByEmail(string $email) : ?User
     {
         return $this->repo()->findOneBy(['email' => $email]);
     }
 
-    public function isEmailTaken(string $email): bool
+    public function isEmailTaken(string $email) : bool
     {
         return (bool)$this->findByEmail($email);
     }
 
-    public function save(User $user, bool $flush = true): void
+    public function save(User $user, bool $flush = true) : void
     {
         $this->em->persist($user);
-        if ($flush) { $this->em->flush(); }
+        if ($flush) {
+            $this->em->flush();
+        }
     }
 
-    public function findByResetToken(string $token): ?User
+    public function findByResetToken(string $token) : ?User
     {
         return $this->repo()->findOneBy(['resetToken' => $token]);
     }
 
-    public function flush(): void
+    public function flush() : void
     {
         $this->em->flush();
     }
 }
-

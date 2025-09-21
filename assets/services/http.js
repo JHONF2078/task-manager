@@ -17,8 +17,10 @@ async function baseFetch(url, options = {}, retry = false) {
   const auth = useAuthStore();
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
+  const isPublicAuth = AUTH_PUBLIC_ENDPOINTS.some(rx => rx.test(url));
 
-  if (auth.token) {
+  // Adjuntar Authorization solo si no es endpoint público
+  if (auth.token && !isPublicAuth) {
     headers.set('Authorization', `${auth.tokenType || 'Bearer'} ${auth.token}`);
   }
   if (!headers.has('Content-Type') && !(options.body instanceof FormData) && !['GET','HEAD'].includes(method)) {
@@ -26,7 +28,7 @@ async function baseFetch(url, options = {}, retry = false) {
   }
   if (!headers.has('Accept')) headers.set('Accept','application/json');
 
-  const needsCsrf = ['POST','PUT','PATCH','DELETE'].includes(method) && !AUTH_PUBLIC_ENDPOINTS.some(rx => rx.test(url));
+  const needsCsrf = ['POST','PUT','PATCH','DELETE'].includes(method) && !isPublicAuth;
   if (needsCsrf) {
     if (!getCsrfToken()) { await ensureCsrf(); }
     const token = getCsrfToken();
@@ -45,9 +47,8 @@ async function baseFetch(url, options = {}, retry = false) {
   }
 
   if (response.status === 401) {
-    const isPublicAuth = AUTH_PUBLIC_ENDPOINTS.some(rx => rx.test(url));
+    // Reutilizamos isPublicAuth ya calculado
     if (!isPublicAuth && !retry) {
-      // Intento de refresh silencioso usando cookie
       try {
         const refreshed = await refreshTokenApi();
         auth.initializeSession(refreshed);

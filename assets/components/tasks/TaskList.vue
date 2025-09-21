@@ -4,7 +4,7 @@
       <span>Listado de tareas</span>
       <div class="d-flex gap-2">
         <v-btn color="secondary" prepend-icon="mdi-download" @click="openExport">Exportar</v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate">Nueva</v-btn>
+        <v-btn v-if="isAdmin" color="primary" prepend-icon="mdi-plus" @click="openCreate">Nueva</v-btn>
       </div>
     </v-card-title>
     <v-data-table
@@ -41,12 +41,14 @@
         <v-btn icon variant="text" size="small" color="info" @click.stop="openShow(item)" title="Ver">
           <v-icon size="18">mdi-eye</v-icon>
         </v-btn>
-        <v-btn icon variant="text" size="small" color="primary" :disabled="!canManage(item)" @click.stop="openEdit(item)" title="Editar">
-          <v-icon size="18">mdi-pencil</v-icon>
-        </v-btn>
-        <v-btn icon variant="text" size="small" color="error" :disabled="!canManage(item)" @click.stop="openDelete(item)" title="Eliminar">
-          <v-icon size="18">mdi-delete</v-icon>
-        </v-btn>
+        <template v-if="isAdmin">
+          <v-btn icon variant="text" size="small" color="primary" @click.stop="openEdit(item)" title="Editar">
+            <v-icon size="18">mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn icon variant="text" size="small" color="error" @click.stop="openDelete(item)" title="Eliminar">
+            <v-icon size="18">mdi-delete</v-icon>
+          </v-btn>
+        </template>
       </template>
       <template #no-data>
         <div class="pa-4 text-grey">No hay tareas</div>

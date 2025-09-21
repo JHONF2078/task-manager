@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Service\Report\TaskReportService;
-use App\Service\Report\TaskReportMailer;
 use App\Service\Report\ReportFileGenerator;
+use App\Service\Report\TaskReportMailer;
+use App\Service\Report\TaskReportService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -18,9 +18,11 @@ class DailyTaskReportCommand extends Command
         private TaskReportService $reportService,
         private TaskReportMailer $reportMailer,
         private ReportFileGenerator $reportFileGenerator
-    ) { parent::__construct(); }
+    ) {
+        parent::__construct();
+    }
 
-    protected function configure(): void
+    protected function configure() : void
     {
         $this
             ->addOption('from', null, InputOption::VALUE_OPTIONAL, 'Fecha desde (YYYY-MM-DD)')
@@ -33,35 +35,35 @@ class DailyTaskReportCommand extends Command
             ->addOption('email', null, InputOption::VALUE_OPTIONAL, 'Enviar a este email (adjunta CSV y PDF)');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output) : int
     {
         $from = $input->getOption('from');
         $to   = $input->getOption('to');
         if (! $from && ! $to) {
             $today = (new \DateTimeImmutable('today'))->format('Y-m-d');
-            $from = $today;
-            $to = $today; // reporte diario por defecto
+            $from  = $today;
+            $to    = $today; // reporte diario por defecto
         }
         $criteria = [
-            'from' => $from,
-            'to' => $to,
-            'status' => $input->getOption('status'),
-            'priority' => $input->getOption('priority'),
+            'from'       => $from,
+            'to'         => $to,
+            'status'     => $input->getOption('status'),
+            'priority'   => $input->getOption('priority'),
             'assignedTo' => $input->getOption('assigned'),
-            'sort' => $input->getOption('sort'),
-            'direction' => $input->getOption('direction'),
+            'sort'       => $input->getOption('sort'),
+            'direction'  => $input->getOption('direction'),
         ];
 
         $output->writeln('<info>Generando reporte...</info>');
-        $tasks = $this->reportService->fetch($criteria);
+        $tasks   = $this->reportService->fetch($criteria);
         $summary = $this->reportService->summarize($tasks);
 
         // Generar archivos mediante el generador desacoplado
-        $files = $this->reportFileGenerator->generateTaskReportFiles($tasks, $summary);
+        $files   = $this->reportFileGenerator->generateTaskReportFiles($tasks, $summary);
         $csvPath = $files['csvPath'];
         $pdfPath = $files['pdfPath'];
-        $csv = $files['csv'];
-        $pdf = $files['pdf'];
+        $csv     = $files['csv'];
+        $pdf     = $files['pdf'];
 
         $output->writeln("<comment>Archivos:</comment>\n - $csvPath\n - $pdfPath");
         $output->writeln('Total tareas: ' . $summary['total']);

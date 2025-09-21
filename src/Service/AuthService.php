@@ -1,12 +1,12 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Service;
 
 use App\Entity\User;
 use App\Exception\InvalidCredentialsException;
+use App\Exception\ValidationException;
 use App\Repository\AuthRepository;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use App\Exception\ValidationException;
 
 /**
  * Servicio de autenticación y funcionalidades relacionadas (registro, login, reset password).
@@ -19,13 +19,14 @@ class AuthService
         private AuthRepository $authRepository,
         private PasswordHasherService $passwordHasher,
         private ValidatorInterface $validator
-    ) {}
+    ) {
+    }
 
     /**
      * Registra un nuevo usuario. Devuelve el usuario creado o null si el email ya existe (conflicto)
      * Lanza ValidationException si fallan constraints.
      */
-    public function register(string $email, string $plainPassword, array $roles = ['ROLE_USER'], string $name = ''): ?User
+    public function register(string $email, string $plainPassword, array $roles = ['ROLE_USER'], string $name = '') : ?User
     {
         if ($this->authRepository->isEmailTaken($email)) {
             return null; // conflicto
@@ -54,7 +55,7 @@ class AuthService
     /**
      * Autentica credenciales. Lanza InvalidCredentialsException si son inválidas.
      */
-    public function authenticate(string $email, string $plainPassword): User
+    public function authenticate(string $email, string $plainPassword) : User
     {
         $user = $this->authRepository->findByEmail($email);
         if (!$user || !$this->passwordHasher->verify($plainPassword, $user->getPassword())) {
@@ -68,7 +69,7 @@ class AuthService
         return $user;
     }
 
-    public function getUserByEmail(string $email): ?User
+    public function getUserByEmail(string $email) : ?User
     {
         return $this->authRepository->findByEmail($email);
     }

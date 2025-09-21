@@ -1,5 +1,7 @@
-<?php
+<?php declare(strict_types=1);
+
 namespace App\Dto;
+
 use Symfony\Component\Validator\Constraints as Assert;
 
 class TaskCreateInput
@@ -27,4 +29,3 @@ class TaskCreateInput
     // Puede venir array de strings o string separada por comas (lo normalizaremos luego)
     public array|string|null $categories = null;
 }
-
