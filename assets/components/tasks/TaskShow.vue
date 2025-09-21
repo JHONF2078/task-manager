@@ -83,7 +83,25 @@ function priorityColor(v){
   if(v==='media') return 'amber-darken-3';
   return 'teal-darken-3';
 }
-function formatDate(d){ if(!d) return '—'; try { return new Date(d).toLocaleDateString(); } catch { return d; } }
+function formatDate(d) {
+  if (!d) return '—';
+  // Extrae la fecha en formato dd/mm/yyyy igual que en el listado, pero muestra en formato largo
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})/.exec(d);
+  if (m) {
+    // Construye la fecha con hora 00:00:00 para formato largo
+    const dateObj = new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00`);
+    return dateObj.toLocaleString('es-ES', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  }
+  return '—';
+}
 function formatDateTime(d){ if(!d) return '—'; try { return new Date(d).toLocaleString(); } catch { return d; } }
 </script>
 
