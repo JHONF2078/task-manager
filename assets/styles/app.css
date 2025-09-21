@@ -1,3 +1,22 @@
-body {
-    background-color: skyblue;
+:root {
+  --color-bg: #f4f4f5;
+  --color-text: #111827;
+  --color-primary: #111827;
+  --color-surface: #fff;
+  --border: #e5e7eb;
+  --sidebar-w: 120px;
+  --gap: 16px;
+  --radius: 10px;
+  --shadow-1: 0 6px 20px rgba(0,0,0,.06);
+  --font-base: 16px;
 }
+* { box-sizing: border-box; }
+html, body { height:100%; margin:0; }
+body { color: var(--color-text); background: var(--color-bg); font: var(--font-base)/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+
+/* Ajuste para Vuetify */
+.v-application { font-size: var(--font-base); }
+
+/* Utilidades */
+.u-hidden { display:none !important; }
+.u-scroll { overflow:auto; }

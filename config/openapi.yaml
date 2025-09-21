@@ -1,0 +1,609 @@
+openapi: 3.0.3
+info:
+  title: API Documentation - MiApp
+  version: 1.1.0
+  description: |
+    Documentación intermedia de la API. Esta especificación se mantiene manualmente.
+    Incluye endpoints de autenticación, usuarios y tareas con modelos de petición y respuesta clave.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local Dev
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    AuthLoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        user: { $ref: '#/components/schemas/User' }
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        name: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+    PasswordForgotRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    PasswordResetRequest:
+      type: object
+      required: [token, new_password]
+      properties:
+        token: { type: string }
+        new_password: { type: string, minLength: 6 }
+    UserCreateRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        name: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+    UserUpdateRequest:
+      type: object
+      properties:
+        email: { type: string }
+        password: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        name: { type: string }
+    UserRolesUpdateRequest:
+      type: object
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          items: { type: string }
+    UserStatusPatchRequest:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    TaskCreateRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        status: { type: string, example: open }
+        priority: { type: string, example: normal }
+        dueDate: { type: string, format: date-time, nullable: true }
+        categories:
+          type: array
+          items: { type: string }
+        assignedTo: { type: integer, nullable: true }
+    TaskUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/TaskCreateRequest'
+    TaskPatchRequest:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        priority: { type: string }
+        dueDate: { type: string, format: date-time, nullable: true }
+        categories:
+          type: array
+          items: { type: string }
+        assignedTo: { type: integer, nullable: true }
+    Task:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        priority: { type: string }
+        dueDate: { type: string, format: date-time, nullable: true }
+        categories:
+          type: array
+          items: { type: string }
+        assignedTo:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            email: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        active: { type: boolean }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    PaginatedTasks:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            limit: { type: integer }
+            total: { type: integer }
+            pages: { type: integer }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: integer }
+        reason: { type: string }
+paths:
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: Login y obtención de tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/register:
+    post:
+      tags: [Auth]
+      summary: Registro de usuario
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201': { description: Usuario creado, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '409': { description: Email duplicado, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /api/auth/token/refresh:
+    post:
+      tags: [Auth]
+      summary: Obtener nuevo access token usando cookie refresh_token
+      description: El refresh token se envía en una cookie HttpOnly; no requiere cuerpo.
+      security: []
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthLoginResponse' } } } }
+        '401': { description: Refresh token inválido o ausente, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (revoca refresh token cookie)
+      security: []
+      responses:
+        '200': { description: Logout OK }
+  /api/csrf:
+    get:
+      tags: [Auth]
+      summary: Obtener token CSRF para peticiones mutadoras
+      security: []
+      responses:
+        '200':
+          description: Token CSRF
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '401': { description: No autenticado (si la implementación futura restringe) }
+  /api/docs.json:
+    get:
+      tags: [Docs]
+      summary: Obtener especificación OpenAPI en formato JSON
+      security: []
+      responses:
+        '200': { description: Especificación OpenAPI JSON }
+        '404': { description: No encontrada }
+  /api/docs:
+    get:
+      tags: [Docs]
+      summary: Interfaz Swagger UI
+      security: []
+      responses:
+        '200': { description: HTML de la UI }
+  /api/profile:
+    get:
+      tags: [Auth]
+      summary: Perfil del usuario autenticado
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Perfil, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { description: No autenticado }
+  /api/users:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: email
+          schema:
+            type: string
+          description: Filtro parcial por email
+      responses:
+        '200': { description: Lista de usuarios, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/User' } } } } }
+        '401': { description: No autenticado }
+    post:
+      tags: [Usuarios]
+      summary: Crear usuario (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201': { description: Creado, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '400': { description: Datos inválidos }
+        '409': { description: Email duplicado }
+  /api/users/{id}:
+    put:
+      tags: [Usuarios]
+      summary: Actualizar usuario (admin, reemplazo completo)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '404': { description: No encontrado }
+    delete:
+      tags: [Usuarios]
+      summary: Eliminar (desactivar) usuario (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200': { description: Eliminado lógicamente }
+        '404': { description: No encontrado }
+  /api/users/{id}/roles:
+    post:
+      tags: [Usuarios]
+      summary: Actualizar roles (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRolesUpdateRequest'
+      responses:
+        '200': { description: Roles actualizados }
+        '400': { description: Formato inválido }
+        '404': { description: No encontrado }
+  /api/users/{id}/status:
+    patch:
+      tags: [Usuarios]
+      summary: Activar / desactivar usuario (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatusPatchRequest'
+      responses:
+        '200': { description: Estado actualizado }
+        '404': { description: No encontrado }
+  /api/tasks:
+    get:
+      tags: [Tareas]
+      summary: Listar tareas con filtros
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: priority
+          schema: { type: string }
+        - in: query
+          name: assignedTo
+          schema: { type: integer }
+        - in: query
+          name: dueFrom
+          schema: { type: string, format: date-time }
+        - in: query
+          name: dueTo
+          schema: { type: string, format: date-time }
+        - in: query
+          name: categories
+          schema: { type: string }
+          description: Lista separada por comas
+        - in: query
+          name: includeInactive
+          schema: { type: boolean }
+          description: Incluir eliminadas/inactivas
+        - in: query
+          name: sort
+          schema: { type: string }
+          description: Campo de orden (createdAt, updatedAt, dueDate)
+        - in: query
+          name: direction
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: Dirección orden
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedTasks' } } } }
+    post:
+      tags: [Tareas]
+      summary: Crear tarea
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+      responses:
+        '201': { description: Creada, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        '400': { description: Datos inválidos }
+  /api/tasks/{id}:
+    get:
+      tags: [Tareas]
+      summary: Obtener una tarea
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: includeInactive
+          schema: { type: boolean }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        '404': { description: No encontrada }
+    put:
+      tags: [Tareas]
+      summary: Reemplazar completamente una tarea
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '200': { description: Actualizada }
+        '404': { description: No encontrada }
+    patch:
+      tags: [Tareas]
+      summary: Actualización parcial de tarea
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskPatchRequest'
+      responses:
+        '200': { description: Actualizada parcialmente }
+        '404': { description: No encontrada }
+    delete:
+      tags: [Tareas]
+      summary: Eliminación lógica
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Eliminada }
+        '404': { description: No encontrada }
+  /api/tasks/{id}/restore:
+    patch:
+      tags: [Tareas]
+      summary: Restaurar tarea eliminada lógicamente
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Restaurada }
+        '404': { description: No encontrada }
+  /api/tasks/explain:
+    get:
+      tags: [Tareas]
+      summary: Explicar consulta de búsqueda (uso interno / diagnóstico)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: priority
+          schema: { type: string }
+        - in: query
+          name: assignedTo
+          schema: { type: integer }
+        - in: query
+          name: dueFrom
+          schema: { type: string, format: date-time }
+        - in: query
+          name: dueTo
+          schema: { type: string, format: date-time }
+        - in: query
+          name: categories
+          schema: { type: string }
+          description: Lista separada por comas
+        - in: query
+          name: includeInactive
+          schema: { type: boolean }
+        - in: query
+          name: sort
+          schema: { type: string }
+        - in: query
+          name: direction
+          schema:
+            type: string
+            enum: [asc, desc]
+        - in: query
+          name: analyze
+          schema: { type: boolean }
+          description: Ejecuta ANALYZE / PLAN detallado
+        - in: query
+          name: timeoutMs
+          schema: { type: integer }
+          description: Tiempo máximo ejecución (ms, max 30000)
+      responses:
+        '200': { description: Plan y recomendaciones }
+        '403': { description: Requiere admin }
+  /api/reports/tasks:
+    get:
+      tags: [Reportes]
+      summary: Exportar reporte de tareas (CSV o PDF)
+      description: Genera y descarga un reporte de tareas con filtros opcionales. Requiere rol admin.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [csv, pdf]
+          description: Formato de salida (por defecto csv)
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+          description: Fecha inicial filtro
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+          description: Fecha final filtro
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: priority
+          schema: { type: string }
+        - in: query
+          name: assigned
+          schema: { type: integer }
+          description: ID usuario asignado
+        - in: query
+          name: sort
+          schema: { type: string }
+          description: Campo de orden (por defecto dueDate)
+        - in: query
+          name: direction
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: Dirección (por defecto asc)
+      responses:
+        '200':
+          description: Archivo de reporte
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+        '400': { description: Parámetros inválidos }
+        '403': { description: Requiere admin }
+  /test-email:
+    get:
+      tags: [Utilidad]
+      summary: Enviar email de prueba (solo entorno dev)
+      security: []
+      responses:
+        '200': { description: Texto indicando resultado }
+security:
+  - bearerAuth: []

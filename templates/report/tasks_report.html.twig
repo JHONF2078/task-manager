@@ -1,0 +1,84 @@
+{# Plantilla de reporte de tareas para PDF (usada por TaskReportService) #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Reporte de Tareas</title>
+    <style>
+        body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size:12px; margin:18px; color:#222; }
+        h1 { font-size:18px; margin:0 0 12px; }
+        p.meta { font-size:11px; color:#555; margin:4px 0 10px; }
+        table { width:100%; border-collapse: collapse; margin-top:10px; }
+        th, td { border:1px solid #ccc; padding:4px 6px; font-size:11px; }
+        th { background:#f0f2f5; text-align:left; }
+        .section { margin-top:14px; }
+        ul { margin:4px 0 0 16px; padding:0; }
+        .muted { color:#777; }
+    </style>
+</head>
+<body>
+    <h1>Reporte de Tareas</h1>
+    <p class="meta">
+        Generado: {{ "now"|date('Y-m-d H:i:s') }}<br>
+        Total: <strong>{{ summary.total }}</strong>
+    </p>
+
+    <div class="section">
+        <strong>Resumen por estado</strong>
+        {% if summary.byStatus is not empty %}
+            <ul>
+                {% for key, val in summary.byStatus %}
+                    <li>{{ key }}: {{ val }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">(sin datos)</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <strong>Resumen por prioridad</strong>
+        {% if summary.byPriority is not empty %}
+            <ul>
+                {% for key, val in summary.byPriority %}
+                    <li>{{ key }}: {{ val }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">(sin datos)</p>
+        {% endif %}
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th style="width:40px;">ID</th>
+            <th>Título</th>
+            <th style="width:70px;">Estado</th>
+            <th style="width:70px;">Prioridad</th>
+            <th style="width:70px;">Venc.</th>
+            <th style="width:120px;">Asignado</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if tasks is empty %}
+            <tr>
+                <td colspan="6" style="text-align:center;" class="muted">Sin resultados</td>
+            </tr>
+        {% else %}
+            {% for t in tasks %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.title }}</td>
+                    <td>{{ t.status }}</td>
+                    <td>{{ t.priority }}</td>
+                    <td>{{ t.dueDate ? t.dueDate|date('Y-m-d') : '' }}</td>
+                    <td>{% if t.assignedTo %}{{ t.assignedTo.email }}{% endif %}</td>
+                </tr>
+            {% endfor %}
+        {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>
+
