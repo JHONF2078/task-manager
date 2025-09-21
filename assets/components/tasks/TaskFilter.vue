@@ -3,7 +3,7 @@
     <v-card-text>
       <v-row dense>
         <v-col cols="12" md="6">
-          <v-text-field v-model="local.search" label="Buscar (título o descripción)"  density="comfortable" clearable @keyup.enter="apply" hint="Coincide en título o descripción" persistent-hint />
+          <v-text-field v-model="local.search" label="Buscar (título o descripción)"  density="comfortable" clearable @keyup.enter="apply"  persistent-hint />
         </v-col>
         <v-col cols="6" md="3">
           <v-select v-model="local.status" :items="statusItems" label="Estado" density="comfortable" clearable @update:model-value="apply" />

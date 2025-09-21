@@ -46,7 +46,7 @@ async function confirmDelete(){
         <div v-if="!props.user" class="text-grey">No hay usuario seleccionado.</div>
         <div v-else class="d-flex flex-column ga-2">
           <p>¿Seguro que deseas eliminar al usuario <strong>{{ props.user.email }}</strong>?</p>
-          <p class="text-caption mb-0">Esta acción no elimina definitivamente si el backend aplica soft delete, pero el usuario quedará inactivo.</p>
+          <p class="text-caption mb-0">Esta acción no elimina definitivamente ¿Esta seguro de inactivar el usuario?.</p>
           <v-alert v-if="isSelf" type="warning" density="compact" variant="tonal" class="mt-2">No puedes eliminar tu propio usuario.</v-alert>
           <v-alert v-if="!isAdmin" type="info" density="compact" variant="tonal" class="mt-2">Solo un administrador puede eliminar usuarios.</v-alert>
           <v-alert v-if="error" type="error" density="compact" class="mt-2">{{ error }}</v-alert>

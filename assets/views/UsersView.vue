@@ -14,7 +14,13 @@
 </template>
 
 <script setup>
+import { onUnmounted } from 'vue';
 import UserFilter from '../components/users/UserFilter.vue';
 import UserList from '../components/users/UserList.vue';
-</script>
+import { useUserStore } from '../stores/userStore';
 
+const userStore = useUserStore();
+onUnmounted(() => {
+  userStore.setFilters({ email: '' }); // Limpiar filtro de email al salir de la vista
+});
+</script>
