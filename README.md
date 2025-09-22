@@ -76,8 +76,9 @@ npm install
      ```cmd
      php bin/console lexik:jwt:generate-keypair
      ```
-3. Ejecuta las migraciones para crear la base de datos:
+3. Ejecuta las migraciones para crear la base de datos y ejecutar las migraciones:
    ```cmd
+   php bin/console doctrine:database:create
    php bin/console doctrine:migrations:migrate
    ```
 
