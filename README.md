@@ -92,8 +92,6 @@ Ejecutar el comado para crear el  administrador con:
 - **Email:** `admin@miapp.com`
 - **Contraseña:** `admin123`
 
-No es necesario ejecutar comandos manuales, el sistema verifica y crea el usuario si no existe.
-
 > **Nota:** El archivo `.env` contiene la configuración de la base de datos y variables generales.
 
 ---
