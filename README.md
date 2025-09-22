@@ -94,6 +94,14 @@ Ejecutar el comado para crear el  administrador con:
 
 > **Nota:** El archivo `.env` contiene la configuración de la base de datos y variables generales.
 
+### 4. Arranca el server 
+
+Ejecutar el siguiente comando para arrancar la aplicacio en la url http://127.0.0.1:8000:
+ ```cmd
+   symfony serve
+ ```
+
+
 ---
 
 ## 🛠️ Detalles técnicos
