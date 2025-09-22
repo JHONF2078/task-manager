@@ -84,7 +84,11 @@ npm install
 
 ### 3. Usuario administrador por defecto
 
-Al iniciar la aplicación, se crea automáticamente un usuario administrador con:
+Ejecutar el comado para crear el  administrador con:
+ ```cmd
+  php bin/console app:create-admin
+ ```
+
 - **Email:** `admin@miapp.com`
 - **Contraseña:** `admin123`
 
