@@ -35,6 +35,64 @@ Aplicación para la gestión de tareas y usuarios.
 ## 📄 Descripción
 `task-manager` permite crear, listar, actualizar y eliminar tareas, así como administrar usuarios relacionados.
 
+## ⚡ Instalación y configuración rápida
+
+### 1. Instalación de dependencias
+
+#### Symfony (PHP)
+```cmd
+composer install
+```
+
+#### NPM (Frontend)
+```cmd
+npm install
+```
+
+### 2. Configuración de Symfony
+
+1. Copia el archivo de entorno:
+   ```cmd
+   copy .env .env.local
+   ```
+2. Edita los archivos de entorno según corresponda:
+   - **Base de datos:**
+     Edita el archivo `.env` y configura:
+     ```env
+     DATABASE_URL="mysql://root@127.0.0.1:3306/task_db?serverVersion=8.0.32&charset=utf8mb4"
+     ```
+   - **Email (Mailtrap):**
+     Edita el archivo `.env.local` y configura:
+     ```env
+     MAILTRAP_HOST=sandbox.smtp.mailtrap.io
+     MAILTRAP_PORT=2525
+     MAILTRAP_USER=TU_USUARIO_MAILTRAP
+     MAILTRAP_PASS=TU_CONTRASENA_MAILTRAP
+     MAIL_FROM_ADDRESS=no-reply@miapp.local
+     MAILER_DSN="smtp://${MAILTRAP_USER}:${MAILTRAP_PASS}@${MAILTRAP_HOST}:${MAILTRAP_PORT}"
+     ```
+   - **JWT:**
+     Las claves ya están generadas en `config/jwt/`. Si necesitas regenerarlas:
+     ```cmd
+     php bin/console lexik:jwt:generate-keypair
+     ```
+3. Ejecuta las migraciones para crear la base de datos:
+   ```cmd
+   php bin/console doctrine:migrations:migrate
+   ```
+
+### 3. Usuario administrador por defecto
+
+Al iniciar la aplicación, se crea automáticamente un usuario administrador con:
+- **Email:** `admin@miapp.com`
+- **Contraseña:** `admin123`
+
+No es necesario ejecutar comandos manuales, el sistema verifica y crea el usuario si no existe.
+
+> **Nota:** El archivo `.env` contiene la configuración de la base de datos y variables generales. El archivo `.env.local` se utiliza para credenciales sensibles y configuración personalizada como Mailtrap. No subas `.env.local` a producción ni a repositorios públicos.
+
+---
+
 ## 🛠️ Detalles técnicos
 ### 🏗️ Arquitectura general
 - Monolito Symfony 7.2 (backend PHP 8.3)  + Vue 3 (Composition API y con Vuetify para UI) embebido.
