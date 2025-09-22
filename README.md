@@ -89,7 +89,7 @@ Al iniciar la aplicación, se crea automáticamente un usuario administrador con
 
 No es necesario ejecutar comandos manuales, el sistema verifica y crea el usuario si no existe.
 
-> **Nota:** El archivo `.env` contiene la configuración de la base de datos y variables generales. El archivo `.env.local` se utiliza para credenciales sensibles y configuración personalizada como Mailtrap. No subas `.env.local` a producción ni a repositorios públicos.
+> **Nota:** El archivo `.env` contiene la configuración de la base de datos y variables generales.
 
 ---
 
