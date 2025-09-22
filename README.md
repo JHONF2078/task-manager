@@ -99,6 +99,7 @@ Ejecutar el comado para crear el  administrador con:
 Ejecutar el siguiente comando para arrancar la aplicacio en la url http://127.0.0.1:8000:
  ```cmd
    symfony serve
+   npm run dev
  ```
 
 
