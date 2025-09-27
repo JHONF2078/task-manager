@@ -15,9 +15,20 @@ function generateRandomToken(bytes = 18) {
   return str;
 }
 
+function clearAllCsrfCookies() {
+  const cookies = document.cookie.split(';');
+  const prefix = (window.location.protocol === 'https:' ? '__Host-csrf-token_' : 'csrf-token_');
+  cookies.forEach(c => {
+    const [name] = c.trim().split('=');
+    if (name.startsWith(prefix)) {
+      document.cookie = `${name}=; path=/; samesite=strict; max-age=0`;
+    }
+  });
+}
+
 function setCsrfDoubleSubmitCookie(cookieName, token) {
   const cookieKey = (window.location.protocol === 'https:' ? '__Host-' : '') + cookieName + '_' + token;
-  const cookieValue = cookieName;
+  const cookieValue = token;
   const secure = window.location.protocol === 'https:';
   let cookie = `${cookieKey}=${cookieValue}; path=/; samesite=strict`;
   if (secure) cookie += '; secure';
@@ -57,20 +68,14 @@ export async function ensureCsrf(force = false) {
           }
           continue;
         }
-        // Modo double-submit: data.token es el nombre de la cookie (ej: 'csrf-token')
+        // Estrategia double-submit: data.token es el nombre base (ej: 'csrf-token')
         const cookieName = data.token;
-        const randomToken = generateRandomToken();
-        try {
-          setCsrfDoubleSubmitCookie(cookieName, randomToken);
-        } catch (e) {
-          console.warn('[CSRF] no se pudo crear cookie, comprobar entorno', e);
-        }
-        csrfToken = randomToken;
-        console.log('entre a csrf');
-        console.log(csrfToken);
+        const token = generateRandomToken();
+        clearAllCsrfCookies(); // Elimina todas las cookies CSRF viejas antes de crear la nueva
+        setCsrfDoubleSubmitCookie(cookieName, token); // Crea la cookie con valor correcto
+        csrfToken = token;
         return csrfToken;
       } catch (e) {
-        console.warn('[CSRF] error intento', attempts, e);
         if (attempts >= maxAttempts) {
           throw e;
         }
