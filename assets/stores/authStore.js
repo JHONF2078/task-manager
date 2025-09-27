@@ -33,7 +33,9 @@ export const useAuthStore = defineStore('auth', {
       if (payload.issued_at) this.setIssuedAt(payload.issued_at);
     },
     async silentRefresh(){
-      try { const data = await refreshTokenApi(); this.initializeSession(data); }
+      try {
+          const data = await refreshTokenApi(); this.initializeSession(data);
+      }
       catch { /* si falla, no forzamos logout inmediato; se hará al primer 401 */ }
     },
     async logout(){

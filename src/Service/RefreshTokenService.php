@@ -86,6 +86,9 @@ class RefreshTokenService
     private function generatePlainToken() : string
     {
         // 32 bytes -> base64url sin relleno (longitud ~43)
+        // Ejemplo hexadecimal: e3 7a 9c 1f 2b 4d 5e 6a 8c 7d 2e 1a 3b 4c 5d 6e 7f 8a 9b 0c 1d 2e 3f 4a 5b 6c 7d 8e 9f 0a 1b 2c
+        // Base64 estándar: 43e6nB8rTV5qjH0uGjtsXW5/jpuMHQ6P0pbbH2OnwKGyw==
+        // Base64url: 43e6nB8rTV5qjH0uGjtsXW5_jpuMHQ6P0pbbH2OnwKGyw
         $raw = random_bytes(32);
         return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
     }

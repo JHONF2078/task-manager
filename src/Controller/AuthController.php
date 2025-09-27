@@ -32,7 +32,7 @@ class AuthController extends AbstractController
         private ParameterBagInterface $params,
         private LoggerInterface $logger,
         private RefreshTokenService $refreshTokenService,
-        private ValidatorInterface $validator,
+        private ValidatorInterface $validator
     ) {
     }
 
@@ -78,10 +78,14 @@ class AuthController extends AbstractController
 
         // Roles opcionales sólo si quien registra es admin
         $roles       = ['ROLE_USER'];
+        // Bloque para asignar roles personalizados solo si quien registra es admin
+        // Comentado porque en el autoregistro nunca se cumple esta condición
+        /*
         $currentUser = $this->tokenStorage->getToken()?->getUser();
         if ($currentUser instanceof User && $this->isGranted('ROLE_ADMIN') && isset($data['roles']) && is_array($data['roles'])) {
             $roles = $data['roles'];
         }
+        */
 
         try {
             $user = $this->authService->register($dto->email, $dto->password, $roles, $dto->name ?? '');
@@ -110,7 +114,7 @@ class AuthController extends AbstractController
         try {
             $user = $this->authService->authenticate($email, $password);
         } catch (InvalidCredentialsException $e) {
-            return $this->json(['error' => $e->getMessage(), 'code' => 401], 401);
+            return $this->json(['error' => $e->getMessage(), 'code' => $e->getStatusCode()], $e->getStatusCode());
         }
 
         if (!$user->isActive()) {
@@ -138,7 +142,7 @@ class AuthController extends AbstractController
                     'name'   => $user->getName(),
                     'roles'  => $user->getRoles(),
                     'active' => $user->isActive(),
-                ]
+                ],
             ]);
             $response->headers->setCookie($this->createRefreshCookie($refreshToken, $refreshExpiresAt));
             return $response;
@@ -179,7 +183,7 @@ class AuthController extends AbstractController
                     'name'   => $user->getName(),
                     'roles'  => $user->getRoles(),
                     'active' => $user->isActive(),
-                ]
+                ],
             ]);
             $response->headers->setCookie($this->createRefreshCookie($newRefreshToken, $refreshExpiresAt));
             return $response;

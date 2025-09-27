@@ -1,4 +1,5 @@
 import { httpPost } from './http';
+import { clearCsrfToken } from './csrfService';
 
 export async function loginApi(email, password) {
   const data = await httpPost('/api/login', { email: email?.trim(), password });
@@ -16,7 +17,9 @@ export async function refreshTokenApi(){
 }
 
 export async function logoutApi(){
-  return await httpPost('/api/auth/logout', {});
+  const resp = await httpPost('/api/auth/logout', {});
+  clearCsrfToken(); // Limpia el token CSRF y la cookie en frontend
+  return resp;
 }
 
 export async function requestPasswordReset(email){
