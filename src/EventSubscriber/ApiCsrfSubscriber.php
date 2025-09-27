@@ -61,7 +61,7 @@ class ApiCsrfSubscriber implements EventSubscriberInterface
         // Valida que ambos existan y sean iguales
         if (!$tokenVal || !$cookieVal || $tokenVal !== $cookieVal) {
             $event->setController(fn () => new JsonResponse([
-                'error' => 'CSRF token inválido o ausente',
+                'error' => 'CSRF token inválido o no presente',
                 'code' => 419
             ], 419));
         }
