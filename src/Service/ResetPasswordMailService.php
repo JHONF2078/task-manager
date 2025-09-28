@@ -32,7 +32,9 @@ class ResetPasswordMailService
      */
     public function send(User $user, string $token, string $resetUrl) : void
     {
+        //generar valor aleatorio y unico para el correo
         $entropy = bin2hex(random_bytes(4));
+        //Recupera tu contraseña - ab12cd - 2025-09-27 20:15
         $subject = 'Recupera tu contraseña - ' . substr($token, 0, 6) . ' - ' . date('Y-m-d H:i');
         // ID crudo sin brackets (addIdHeader los añade). Formato recomendado: uniqueid@domain
         $messageIdRaw = time() . '.' . bin2hex(random_bytes(6)) . '@miapp.local';

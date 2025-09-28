@@ -132,14 +132,18 @@ function highlightEmail(email){
   const term = (filters.value.email || '').trim();
   if(!term) return escapeHtml(email || '');
   try {
+    // Primero escapamos el email para evitar XSS, pero luego revertimos el escape solo en el span
     const pattern = term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    const re = new RegExp(`(${pattern})`,'ig');
-    return escapeHtml(email || '').replace(re,'<span class="hl-email">$1</span>');
+    const re = new RegExp(pattern, 'ig');
+    // Resaltamos el término en el email original, sin escapar
+    return (email || '').replace(re, match => `<span class=\"hl-email\">${escapeHtml(match)}</span>`);
   } catch { return escapeHtml(email || ''); }
 }
 </script>
 
 <style scoped>
 .gap-2 { gap: .5rem; }
+</style>
+<style>
 .hl-email { background: #ffe9a8; padding:0 2px; border-radius:3px; }
 </style>

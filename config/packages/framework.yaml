@@ -2,8 +2,10 @@
 framework:
     secret: '%env(APP_SECRET)%'
     session:
-        enabled: true
-        handler_id: null
+        enabled: false
+        #handler_id: null
+        #handler_id: 'session.handler.native_file'
+        #save_path: '%kernel.project_dir%/var/sessions'
 
     #esi: true
     #fragments: true
