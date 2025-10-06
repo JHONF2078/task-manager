@@ -2,12 +2,13 @@
 
 namespace App\Service\Report;
 
+use App\Service\Contract\Report\ReportFileGeneratorInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Genera archivos (CSV y PDF) para un reporte de tareas y devuelve rutas y contenidos.
  */
-class ReportFileGenerator
+class ReportFileGenerator implements ReportFileGeneratorInterface
 {
     public function __construct(
         private TaskReportService $taskReportService,

@@ -2,10 +2,11 @@
 
 namespace App\Service\Report;
 
+use App\Service\Contract\Report\TaskReportMailerInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 
-class TaskReportMailer
+class TaskReportMailer implements TaskReportMailerInterface
 {
     public function __construct(
         private MailerInterface $mailer,

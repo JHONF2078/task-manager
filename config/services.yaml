@@ -50,11 +50,30 @@ services:
 
     AutoMapperPlus\AutoMapperInterface:
         class: AutoMapperPlus\AutoMapper
-        arguments: ['@AutoMapperPlus\Configuration\AutoMapperConfigInterface']
-
-    App\Service\MapperHelper:
         arguments:
-            $params: '@parameter_bag'
-            $autoMapper: '@AutoMapperPlus\AutoMapperInterface'
+            - '@AutoMapperPlus\Configuration\AutoMapperConfigInterface'
+
+    App\Helper\MapperHelper:
         autowire: true
         autoconfigure: true
+        public: true
+
+    # ===================================================================
+    # MANEJADORES DE EXCEPCIONES DE API (Elegir uno)
+    # ===================================================================
+
+    # --- Opción 1: Manejador moderno con formato "Problem Details" (RFC 9457) ---
+    # Este manejador centraliza todos los errores de la API en un solo lugar.
+    # ESTÁ ACTIVADO POR DEFECTO.
+    #App\EventSubscriber\ProblemDetailsApiExceptionSubscriber:
+    #    tags: [ 'kernel.event_subscriber' ]
+
+
+    # --- Opción 2: Manejador "Legacy" (simple) ---
+    # Este sistema utiliza dos suscriptores separados.
+    # Para activarlo:
+    #   1. Comenta las líneas de 'ProblemDetailsApiExceptionSubscriber' (arriba).
+    #   2. Descomenta las siguientes líneas.
+
+    App\EventSubscriber\ApiExceptionSubscriber:
+        tags: [ 'kernel.event_subscriber' ]

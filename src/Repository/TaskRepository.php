@@ -4,12 +4,13 @@ namespace App\Repository;
 
 use App\Dto\TaskFilterDto;
 use App\Entity\Task;
+use App\Repository\Contract\TaskRepositoryInterface;
 use App\Service\TaskFilterService;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
-class TaskRepository extends ServiceEntityRepository
+class TaskRepository extends ServiceEntityRepository implements TaskRepositoryInterface
 {
     public function __construct(
         ManagerRegistry $registry,

@@ -10,9 +10,17 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[UniqueEntity(fields: ['email'], message: 'Este email ya está registrado')]
+#[UniqueEntity(fields: ['email'], message: 'Este email ya está registrado', groups: ['Persist'])]
 class User implements UserInterface
 {
+    public const ROLE_USER  = 'ROLE_USER';
+    public const ROLE_ADMIN = 'ROLE_ADMIN';
+
+    public const ALLOWED_ROLES = [
+        self::ROLE_USER,
+        self::ROLE_ADMIN,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: "integer")]
@@ -20,9 +28,6 @@ class User implements UserInterface
     private $id;
 
     #[ORM\Column(type: "string", length: 180, unique: true)]
-    #[Assert\NotBlank(message: 'El email es obligatorio')]
-    #[Assert\Email(message: 'Email inválido')]
-    #[Assert\Length(max: 180, maxMessage: 'Email demasiado largo')]
     #[Groups(['task:read'])]
     private $email;
 
@@ -34,8 +39,6 @@ class User implements UserInterface
     private $password;
 
     // Campo temporal no persistido para validación en registro/cambio contraseña
-    #[Assert\NotBlank(groups: ['register'], message: 'La contraseña es obligatoria')]
-    #[Assert\Length(min: 6, minMessage: 'La contraseña debe tener al menos {{ limit }} caracteres', groups: ['register'])]
     private ?string $plainPassword = null;
 
     #[ORM\Column(type: 'boolean')]
@@ -52,7 +55,6 @@ class User implements UserInterface
     private ?\DateTimeInterface $resetTokenExpiresAt = null;
 
     #[ORM\Column(type: 'string', length: 150)]
-    #[Assert\Length(max: 150, maxMessage: 'El nombre no puede exceder {{ limit }} caracteres')]
     private string $name = '';
 
     public function getId() : int

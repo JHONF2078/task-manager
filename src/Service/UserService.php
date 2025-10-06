@@ -6,10 +6,11 @@ use App\Entity\User;
 use App\Exception\InvalidCredentialsException;
 use App\Exception\ValidationException;
 use App\Repository\UserRepository;
+use App\Service\Contract\UserServiceInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class UserService
+class UserService implements UserServiceInterface
 {
     private array $allowedRoles = ['ROLE_USER','ROLE_ADMIN'];
 

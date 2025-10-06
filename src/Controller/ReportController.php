@@ -3,7 +3,7 @@
 namespace App\Controller;
 
 use App\Exception\ValidationException;
-use App\Service\Report\TaskReportService;
+use App\Service\Contract\Report\TaskReportServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/reports')]
 class ReportController extends AbstractController
 {
-    public function __construct(private TaskReportService $taskReportService)
+    public function __construct(private TaskReportServiceInterface $taskReportService)
     {
     }
 

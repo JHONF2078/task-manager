@@ -6,8 +6,8 @@ use App\Entity\User;
 use App\Exception\ConflictException;
 use App\Exception\EntityNotFoundException;
 use App\Exception\ValidationException;
-use App\Service\AuthService;
-use App\Service\UserService;
+use App\Service\Contract\AuthServiceInterface;
+use App\Service\Contract\UserServiceInterface;
 use App\Service\validation\UserValidationService;
 use DateTimeInterface;
 use InvalidArgumentException;
@@ -22,8 +22,8 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
 class UserController extends AbstractController
 {
     public function __construct(
-        private readonly UserService           $userService,
-        private readonly AuthService           $authService,
+        private readonly UserServiceInterface  $userService,
+        private readonly AuthServiceInterface  $authService,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly UserValidationService $userValidationService,
     ) {

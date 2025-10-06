@@ -8,10 +8,11 @@ use App\Entity\Task;
 use App\Exception\ValidationException;
 use App\Repository\TaskRepository;
 use App\Repository\UserRepository;
+use App\Service\Contract\TaskServiceInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class TaskService
+class TaskService implements TaskServiceInterface
 {
     public function __construct(
         private TaskRepository $taskRepository,

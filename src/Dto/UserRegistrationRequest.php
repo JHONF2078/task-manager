@@ -4,7 +4,7 @@ namespace App\Dto;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-class UserRegistrationInput
+class UserRegistrationRequest
 {
     #[Assert\NotBlank(message: 'El email es obligatorio')]
     #[Assert\Email(message: 'Email inválido')]

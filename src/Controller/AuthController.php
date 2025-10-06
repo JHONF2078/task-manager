@@ -2,13 +2,12 @@
 
 namespace App\Controller;
 
-use App\Controller\Traits\ApiErrorHandlerTrait;
 use App\Exception\ConflictException;
 use App\Exception\InvalidCredentialsException;
 use App\Exception\RefreshTokenInvalidException;
 use App\Exception\ValidationException;
 use App\Mapper\Manual\AuthResponseMapper;
-use App\Service\AuthService;
+use App\Service\Contract\AuthServiceInterface;
 use App\Service\RefreshTokenService;
 use App\Service\validation\UserValidationService;
 use DateTimeImmutable;
@@ -27,10 +26,8 @@ use Throwable;
 #[Route('/api')]
 class AuthController extends AbstractController
 {
-    use ApiErrorHandlerTrait;
-
     public function __construct(
-        private readonly AuthService              $authService,
+        private readonly AuthServiceInterface     $authService,
         private readonly JWTTokenManagerInterface $jwtManager,
         private readonly ParameterBagInterface    $params,
         private readonly LoggerInterface          $logger,
@@ -70,13 +67,12 @@ class AuthController extends AbstractController
                 $refreshToken,
                 $refreshExpiresAt
             );
-        } catch (InvalidCredentialsException $e) {
-            return $this->createErrorResponse($e);
-        } catch (AuthenticationException $e) {
-            return $this->createErrorResponse($e);
         } catch (Throwable $e) {
-            $this->logger->error('Login error generating tokens', ['exception' => $e]);
-            return $this->createErrorResponse($e);
+            // Loguear errores inesperados, pero dejar que el subscriber maneje la respuesta
+            if (!($e instanceof InvalidCredentialsException || $e instanceof AuthenticationException)) {
+                $this->logger->error('Login error generating tokens', ['exception' => $e]);
+            }
+            throw $e;
         }
     }
 
@@ -90,10 +86,10 @@ class AuthController extends AbstractController
             $roles         = $this->userValidationService->normalizeRoles();
 
             $user = $this->authService->register(
-                $validatedData['normalizedData']['email'],
-                $validatedData['normalizedData']['password'],
+                $validatedData['email'],
+                $validatedData['password'],
                 $roles,
-                $validatedData['normalizedData']['name'] ?? ''
+                $validatedData['name'] ?? ''
             );
 
             if (!$user) {
@@ -107,11 +103,11 @@ class AuthController extends AbstractController
                 'roles' => $user->getRoles(),
             ], 201);
 
-        } catch (ValidationException|ConflictException $e) {
-            return $this->createErrorResponse($e);
-        } catch (Exception $e) {
-            $this->logger->error('Error en registro: ' . $e->getMessage());
-            return $this->createErrorResponse($e);
+        } catch (Throwable $e) {
+            if (!($e instanceof ValidationException || $e instanceof ConflictException)) {
+                $this->logger->error('Error en registro: ' . $e->getMessage());
+            }
+            throw $e;
         }
     }
 
@@ -120,7 +116,7 @@ class AuthController extends AbstractController
     {
         $plainRefresh = $request->cookies->get('refresh_token');
         if (!$plainRefresh) {
-            return $this->createErrorResponse(new AuthenticationException('Refresh token ausente'));
+            throw new AuthenticationException('Refresh token ausente');
         }
 
         try {
@@ -147,10 +143,11 @@ class AuthController extends AbstractController
                 $newRefreshToken,
                 $refreshExpiresAt
             );
-        } catch (RefreshTokenInvalidException|AuthenticationException $e) {
-            return $this->createErrorResponse($e);
-        } catch (Exception $e) {
-            return $this->createErrorResponse($e);
+        } catch (Throwable $e) {
+            if (!($e instanceof RefreshTokenInvalidException || $e instanceof AuthenticationException)) {
+                $this->logger->error('Error en refresh token: ' . $e->getMessage());
+            }
+            throw $e;
         }
     }
 

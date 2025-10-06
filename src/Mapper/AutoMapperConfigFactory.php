@@ -115,4 +115,24 @@ class AutoMapperConfigFactory implements AutoMapperConfiguratorInterface
                 ] : null;
             });
     }
+
+    /**
+     * Parsea una cadena de fecha a DateTimeImmutable
+     *
+     * @param string|null $dateString
+     * @return DateTimeImmutable|null
+     */
+    private function parseDateString(?string $dateString): ?DateTimeImmutable
+    {
+        if ($dateString === null || trim($dateString) === '') {
+            return null;
+        }
+
+        try {
+            return new DateTimeImmutable($dateString);
+        } catch (\Exception $e) {
+            // Si no se puede parsear, retornar null
+            return null;
+        }
+    }
 }

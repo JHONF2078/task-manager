@@ -6,6 +6,7 @@ use App\Entity\User;
 use App\Exception\InvalidCredentialsException;
 use App\Exception\ValidationException;
 use App\Repository\AuthRepository;
+use App\Service\Contract\AuthServiceInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -13,7 +14,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * Separa la lógica de negocio de acceso a datos (AuthRepository) y deja a los controladores
  * solo la orquestación HTTP.
  */
-class AuthService
+class AuthService implements AuthServiceInterface
 {
     public function __construct(
         private AuthRepository $authRepository,
@@ -37,7 +38,9 @@ class AuthService
         $user->setPlainPassword($plainPassword);
         $user->setName($name !== '' ? $name : (explode('@', $email)[0] ?? ''));
 
-        $violations = $this->validator->validate($user, null, ['register']);
+        // Solo valida el grupo 'Persist' (UniqueEntity)
+        $violations = $this->validator->validate($user, groups: ['Persist']);
+
         if (count($violations) > 0) {
             $errors = [];
             foreach ($violations as $v) {
@@ -45,6 +48,7 @@ class AuthService
             }
             throw new ValidationException($errors);
         }
+
         // Hash tras validación
         $user->setPassword($this->passwordHasher->hash($plainPassword));
         $user->eraseCredentials();

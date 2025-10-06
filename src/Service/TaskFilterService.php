@@ -3,9 +3,10 @@
 namespace App\Service;
 
 use App\Dto\TaskFilterDto;
+use App\Service\Contract\TaskFilterServiceInterface;
 use Doctrine\ORM\QueryBuilder;
 
-class TaskFilterService
+class TaskFilterService implements TaskFilterServiceInterface
 {
     /**
      * Aplica los filtros a un QueryBuilder de tareas

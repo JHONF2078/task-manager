@@ -5,13 +5,14 @@ namespace App\Service;
 use App\Entity\User;
 use App\Exception\ValidationException;
 use App\Repository\UserRepository;
+use App\Service\Contract\PasswordResetServiceInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Servicio dedicado a la gestión de tokens y flujo de reseteo de contraseña.
  * Centraliza la lógica que antes estaba repartida en AuthService y UserService.
  */
-class PasswordResetService
+class PasswordResetService implements PasswordResetServiceInterface
 {
     public function __construct(
         private UserRepository $userRepository,

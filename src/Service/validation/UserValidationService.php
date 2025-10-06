@@ -2,11 +2,13 @@
 
 namespace App\Service\validation;
 
-use App\Dto\UserRegistrationInput;
+use App\Dto\UserRegistrationRequest;
+use App\Entity\User;
 use App\Exception\ValidationException;
+use App\Service\Contract\validation\UserValidationServiceInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-readonly class UserValidationService
+readonly class UserValidationService implements UserValidationServiceInterface
 {
     public function __construct(
         private ValidatorInterface $validator,
@@ -15,7 +17,7 @@ readonly class UserValidationService
 
     public function validateAndNormalizeUserData(array $data) : array
     {
-        $dto           = new UserRegistrationInput();
+        $dto           = new UserRegistrationRequest();
         $dto->email    = (string)($data['email'] ?? '');
         $dto->password = (string)($data['password'] ?? '');
         $dto->name     = isset($data['name']) ? (string)$data['name'] : null;
@@ -30,25 +32,21 @@ readonly class UserValidationService
         }
 
         return [
-            'dto'            => $dto,
-            'normalizedData' => [
-                'email'    => $dto->email,
-                'password' => $dto->password,
-                'name'     => $dto->name,
-            ]
+            'email'    => $dto->email,
+            'password' => $dto->password,
+            'name'     => $dto->name,
         ];
     }
 
     public function normalizeRoles(?array $roles = null) : array
     {
-        $roles = $roles ?? ['ROLE_USER'];
+        $roles = $roles ?? [User::ROLE_USER];
         if (!is_array($roles)) {
-            $roles = ['ROLE_USER'];
+            $roles = [User::ROLE_USER];
         }
-        $allowed = ['ROLE_USER', 'ROLE_ADMIN'];
-        $roles   = array_values(array_intersect($roles, $allowed));
+        $roles = array_values(array_intersect($roles, User::ALLOWED_ROLES));
         if (empty($roles)) {
-            $roles = ['ROLE_USER'];
+            $roles = User::ROLE_USER;
         }
         return $roles;
     }

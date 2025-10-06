@@ -3,9 +3,9 @@
 namespace App\Controller\Auth;
 
 use App\Exception\ValidationException;
-use App\Service\AuthService;
-use App\Service\PasswordResetService;
-use App\Service\ResetPasswordMailService;
+use App\Service\Contract\AuthServiceInterface;
+use App\Service\Contract\PasswordResetServiceInterface;
+use App\Service\Contract\ResetPasswordMailServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,9 +15,9 @@ use Symfony\Component\Routing\Attribute\Route;
 class PasswordResetController extends AbstractController
 {
     public function __construct(
-        private PasswordResetService $passwordResetService,
-        private AuthService $authService,
-        private ResetPasswordMailService $resetPasswordMailService,
+        private PasswordResetServiceInterface $passwordResetService,
+        private AuthServiceInterface $authService,
+        private ResetPasswordMailServiceInterface $resetPasswordMailService,
     ) {
     }
 

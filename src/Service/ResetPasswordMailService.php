@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\User;
+use App\Service\Contract\ResetPasswordMailServiceInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -13,7 +14,7 @@ use Symfony\Component\Mime\Email;
  * Servicio responsable de enviar el correo de recuperación de contraseña.
  * Tolera la ausencia de un MAILER_DSN real: en ese caso loguea y no lanza excepción.
  */
-class ResetPasswordMailService
+class ResetPasswordMailService implements ResetPasswordMailServiceInterface
 {
     public function __construct(
         private MailerInterface $mailer,

@@ -2,11 +2,13 @@
 
 namespace App\Service;
 
+use App\Service\Contract\PasswordHasherServiceInterface;
+
 /**
  * Servicio central para hashing y verificación de contraseñas.
  * Permite centralizar algoritmo y facilitar futura migración (ej: Argon2id) o rehash adaptativo.
  */
-class PasswordHasherService
+class PasswordHasherService implements PasswordHasherServiceInterface
 {
     private string|int $algo; // antes int, ahora permite string|int según versión de PHP
     private array $options;

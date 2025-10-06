@@ -3,10 +3,11 @@
 namespace App\Repository;
 
 use App\Entity\RefreshToken;
+use App\Repository\Contract\RefreshTokenRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-class RefreshTokenRepository extends ServiceEntityRepository
+class RefreshTokenRepository extends ServiceEntityRepository implements RefreshTokenRepositoryInterface
 {
     public function __construct(ManagerRegistry $registry)
     {

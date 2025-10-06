@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Helper;
 
 use App\Mapper\Manual\TaskResponseMapper;
 use AutoMapperPlus\AutoMapperInterface;

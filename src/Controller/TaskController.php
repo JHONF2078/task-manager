@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Controller\Traits\PaginateTrait;
 use App\Dto\TaskCreateInput;
 use App\Dto\TaskFilterDto;
 use App\Dto\TaskResponseDto;
@@ -9,10 +10,9 @@ use App\Dto\TaskUpdateInput;
 use App\Entity\Task;
 use App\Exception\EntityNotFoundException;
 use App\Exception\ValidationException;
-use App\Mapper\TaskInputMapper;
+use App\Helper\MapperHelper;
 use App\Repository\TaskRepository;
-use App\Service\MapperHelper;
-use App\Service\TaskService;
+use App\Service\Contract\TaskServiceInterface;
 use AutoMapperPlus\AutoMapperInterface;
 use AutoMapperPlus\Exception\UnregisteredMappingException;
 use DateTimeImmutable;
@@ -23,19 +23,18 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/tasks')]
 class TaskController extends AbstractController
 {
+    use PaginateTrait;
+
     public function __construct(
-        private readonly TaskService $taskService,
+        private readonly TaskServiceInterface $taskService,
         private readonly TaskRepository $taskRepository,
         private readonly ValidatorInterface $validator,
-        private readonly SerializerInterface $serializer,
         private readonly AutoMapperInterface $autoMapper,
-        private readonly TaskInputMapper $taskInputMapper,
         private readonly LoggerInterface $logger,
         private readonly MapperHelper $mapperHelper,
     ) {
@@ -77,8 +76,9 @@ class TaskController extends AbstractController
                 throw new ValidationException($violations);
             }
 
-            $page      = max(1, (int)$request->query->get('page', 1));
-            $limit     = max(1, min(100, (int)$request->query->get('limit', 20)));
+            // Usamos el trait para obtener la paginación
+            [$limit, $page] = $this->getPagination($request);
+
             $sort      = $request->query->get('sort');
             $direction = $request->query->get('direction', 'asc');
 
@@ -98,10 +98,12 @@ class TaskController extends AbstractController
                 'limit' => $limit
             ]);
         } catch (ValidationException $e) {
-            return $this->json(['error' => 'Filtros inválidos', 'violations' => $e->getViolations()], 400);
+            // Este catch ahora solo se activará para los errores de validación de filtros
+            throw $e; // Relanzamos para que lo capture el ApiExceptionSubscriber
         } catch (\Exception $e) {
             $this->logger->error('Error al listar tareas: ' . $e->getMessage());
-            return $this->json(['error' => 'Error al procesar la solicitud'], 500);
+            // Relanzamos para que lo capture el ApiExceptionSubscriber
+            throw $e;
         }
     }
 
@@ -109,7 +111,7 @@ class TaskController extends AbstractController
     public function getOne(int $id, Request $request) : JsonResponse
     {
         $includeInactive = $request->query->getBoolean('includeInactive');
-        $task = $this->taskService->get($id, $includeInactive);
+        $task            = $this->taskService->get($id, $includeInactive);
         if (!$task) {
             throw new EntityNotFoundException('Tarea', $id);
         }
@@ -120,7 +122,7 @@ class TaskController extends AbstractController
         $this->logger->debug('Task response:', [
             'createdAt' => $task->getCreatedAt()->format('Y-m-d H:i:s'),
             'updatedAt' => $task->getUpdatedAt()->format('Y-m-d H:i:s'),
-            'mapped' => $mappedTask
+            'mapped'    => $mappedTask
         ]);
 
         return $this->json($mappedTask);
@@ -137,8 +139,9 @@ class TaskController extends AbstractController
             $task = $this->taskService->createFromEntity($task);
 
             return $this->json(
-                $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
-            , 201);
+                $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL),
+                201
+            );
         } catch (UnregisteredMappingException $e) {
             return $this->json(['error' => 'Error de mapeo: ' . $e->getMessage(), 'violations' => []], 500);
         } catch (InvalidArgumentException $e) {
@@ -159,14 +162,14 @@ class TaskController extends AbstractController
             $this->throwIfViolations($this->validator->validate($dto));
 
             $updatedEntity = $this->autoMapper->map($dto, Task::class);
-            $updated = $this->taskService->updateFromEntity($task, $updatedEntity, false);
+            $updated       = $this->taskService->updateFromEntity($task, $updatedEntity, false);
 
             return $this->json(
                 $this->mapperHelper->map($updated, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
             );
         } catch (UnregisteredMappingException $e) {
             return $this->json([
-                'error' => 'Error de mapeo: ' . $e->getMessage(),
+                'error'      => 'Error de mapeo: ' . $e->getMessage(),
                 'violations' => []
             ], 500);
         } catch (InvalidArgumentException $e) {
@@ -187,14 +190,14 @@ class TaskController extends AbstractController
             $this->throwIfViolations($this->validator->validate($dto));
 
             $updatedEntity = $this->autoMapper->mapToObject($dto, $task);
-            $updated = $this->taskService->updateFromEntity($task, $updatedEntity);
+            $updated       = $this->taskService->updateFromEntity($task, $updatedEntity);
 
             return $this->json(
                 $this->mapperHelper->map($updated, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
             );
         } catch (UnregisteredMappingException $e) {
             return $this->json([
-                'error' => 'Error de mapeo: ' . $e->getMessage(),
+                'error'      => 'Error de mapeo: ' . $e->getMessage(),
                 'violations' => []
             ], 500);
         } catch (InvalidArgumentException $e) {

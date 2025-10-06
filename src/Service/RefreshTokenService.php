@@ -6,11 +6,12 @@ use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Exception\RefreshTokenInvalidException;
 use App\Repository\RefreshTokenRepository;
+use App\Service\Contract\RefreshTokenServiceInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use DateTimeImmutable;
 use Random\RandomException;
 
-class RefreshTokenService
+class RefreshTokenService implements RefreshTokenServiceInterface
 {
     public function __construct(
         private readonly RefreshTokenRepository $repo,

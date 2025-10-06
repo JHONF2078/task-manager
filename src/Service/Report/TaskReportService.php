@@ -2,8 +2,10 @@
 
 namespace App\Service\Report;
 
+use App\Dto\TaskFilterDto;
 use App\Entity\Task;
 use App\Repository\TaskRepository;
+use App\Service\Contract\Report\TaskReportServiceInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Twig\Environment; // agregado
@@ -11,7 +13,7 @@ use Twig\Environment; // agregado
 /**
  * Servicio para generar reportes de tareas en CSV y PDF con filtros.
  */
-class TaskReportService
+class TaskReportService implements TaskReportServiceInterface
 {
     private const MAX_REPORT_ROWS = 10000; // límite de seguridad para no saturar memoria
 
@@ -26,21 +28,32 @@ class TaskReportService
      */
     public function fetch(array $criteria) : array
     {
-        $filters = [];
+        // Crear TaskFilterDto a partir del array de criterios
+        $filters = new TaskFilterDto();
+        $filters->includeInactive = false;
+
         if (!empty($criteria['status'])) {
-            $filters['status'] = $criteria['status'];
+            $filters->status = $criteria['status'];
         }
         if (!empty($criteria['priority'])) {
-            $filters['priority'] = $criteria['priority'];
+            $filters->priority = $criteria['priority'];
         }
         if (!empty($criteria['assignedTo'])) {
-            $filters['assignedTo'] = $criteria['assignedTo'];
+            $filters->assignedTo = (int)$criteria['assignedTo'];
         }
         if (!empty($criteria['from'])) {
-            $filters['dueFrom'] = $criteria['from'];
+            try {
+                $filters->dueFrom = new \DateTimeImmutable($criteria['from']);
+            } catch (\Exception $e) {
+                // Ignorar fecha inválida
+            }
         }
         if (!empty($criteria['to'])) {
-            $filters['dueTo'] = $criteria['to'];
+            try {
+                $filters->dueTo = new \DateTimeImmutable($criteria['to']);
+            } catch (\Exception $e) {
+                // Ignorar fecha inválida
+            }
         }
 
         $result = $this->tasks->search($filters, 1, self::MAX_REPORT_ROWS, $criteria['sort'] ?? 'dueDate', $criteria['direction'] ?? 'asc');

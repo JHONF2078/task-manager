@@ -3,10 +3,11 @@
 namespace App\Repository;
 
 use App\Entity\User;
+use App\Repository\Contract\AuthRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ObjectRepository;
 
-class AuthRepository
+class AuthRepository implements AuthRepositoryInterface
 {
     public function __construct(private EntityManagerInterface $em)
     {
@@ -15,6 +16,27 @@ class AuthRepository
     private function repo() : ObjectRepository
     {
         return $this->em->getRepository(User::class);
+    }
+
+    // Métodos estándar de Doctrine
+    public function find($id, $lockMode = null, $lockVersion = null)
+    {
+        return $this->repo()->find($id, $lockMode, $lockVersion);
+    }
+
+    public function findAll()
+    {
+        return $this->repo()->findAll();
+    }
+
+    public function findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+    {
+        return $this->repo()->findBy($criteria, $orderBy, $limit, $offset);
+    }
+
+    public function findOneBy(array $criteria, array $orderBy = null)
+    {
+        return $this->repo()->findOneBy($criteria, $orderBy);
     }
 
     public function findByEmail(string $email) : ?User

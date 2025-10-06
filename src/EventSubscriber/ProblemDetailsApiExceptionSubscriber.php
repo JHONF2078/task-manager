@@ -13,7 +13,6 @@ use ReflectionClass;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -23,9 +22,9 @@ use Throwable;
 
 /**
  * Maneja las excepciones de la API y devuelve una respuesta JSON
- * con un formato de error detallado (versión "Legacy" adaptada).
+ * con el formato Problem Details (RFC 9457).
  */
-readonly class ApiExceptionSubscriber implements EventSubscriberInterface
+readonly class ProblemDetailsApiExceptionSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private LoggerInterface $logger,
@@ -44,44 +43,34 @@ readonly class ApiExceptionSubscriber implements EventSubscriberInterface
     public function onKernelException(ExceptionEvent $event) : void
     {
         $request = $event->getRequest();
-
-        /// 1. Filtro: ¿Es una petición a la API?
         if (!str_starts_with($request->getPathInfo(), '/api')) {
             return;
         }
-        // 2. Obtiene el error (la excepción) ValidationException, ConflictException, etc
+
         $exception = $event->getThrowable();
-        // 3. Crea la respuesta JSON personalizada
-        $response  = $this->createErrorResponse($exception, $request);
-        // 4. Reemplaza la respuesta de error por defecto con la nuestra
-        //Le dice a Symfony: "Olvida la página de error HTML. Envía este JsonResponse al cliente en su lugar".
+        $response  = $this->createErrorResponse($exception);
         $event->setResponse($response);
     }
 
-    private function createErrorResponse(Throwable $e, Request $request) : JsonResponse
+    private function createErrorResponse(Throwable $e) : JsonResponse
     {
-        //Obtiene el Código de Estado: Llama a getStatusCode($e) para determinar el código HTTP correcto (400, 401, 404, 409, 500, etc.).
         $statusCode = $this->getStatusCode($e);
 
-        //Crea el cuerpo base del JSON:
-        $data = [
+        $problemDetails = [
             'type'      => 'about:blank',
             'title'     => (new ReflectionClass($e))->getShortName(),
             'status'    => $statusCode,
             'detail'    => $e->getMessage(),
-            'instance'  => $request->getUri(),
+            'instance'  => $e->getRequest()->getUri(),
             'timestamp' => (new \DateTime())->format(DateTimeInterface::ATOM)
         ];
 
-        //Añade detalles extra (si aplica):
-        //Si el error es una ValidationException, añade la lista de violations (errores por campo).
         if ($e instanceof ValidationException) {
-            $data['violations'] = $e->getViolations();
+            $problemDetails['violations'] = $e->getViolations();
         }
 
-        //si estás en modo debug, añade toda la información de depuración (archivo, línea, traza del error).
         if ($this->kernelDebug) {
-            $data['debug'] = [
+            $problemDetails['debug'] = [
                 'class' => get_class($e),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
@@ -89,30 +78,21 @@ readonly class ApiExceptionSubscriber implements EventSubscriberInterface
             ];
         }
 
-        //Si el código es 500 o mayor (un error del servidor), lo escribe en los logs. Esto es una buena práctica
-        // para no llenar los logs con errores de cliente (4xx) como contraseñas incorrectas.
         if ($statusCode >= 500) {
             $this->logger->error($e->getMessage(), ['exception' => $e]);
         }
 
-        // La diferencia clave: se usa 'application/json'
-        //Devuelve el JsonResponse: Crea y devuelve el objeto JsonResponse final.
-        return new JsonResponse($data, $statusCode, [
-            'Content-Type' => 'application/json'
+        return new JsonResponse($problemDetails, $statusCode, [
+            'Content-Type' => 'application/problem+json'
         ]);
     }
 
     private function getStatusCode(Throwable $e) : int
     {
-        // 1. Primero, maneja las excepciones estándar de Symfony
         if ($e instanceof HttpExceptionInterface) {
-            return $e->getStatusCode(); // Ej: NotFoundHttpException ya sabe que es 404
+            return $e->getStatusCode();
         }
 
-        /// 2. Si no, usa un `match` para tus excepciones y las de Security
-        //Esta es la parte más inteligente, donde se traduce el tipo de error a un código HTTP:
-        //El match es una versión moderna y más potente del switch de PHP
-        //get_class($e) devuelve el nombre completo de la clase de la excepción como un string
         return match (get_class($e)) {
             ValidationException::class => 400, //personalizada  Para errores de formato en DTOs.
             InvalidCredentialsException::class, //personalizada Para email/contraseña incorrectos.
@@ -121,7 +101,7 @@ readonly class ApiExceptionSubscriber implements EventSubscriberInterface
             AccessDeniedException::class        => 403, //La lanza Symfony si un usuario está autenticado pero no tiene los roles necesarios para acceder a un recurso.
             EntityNotFoundException::class      => 404, //personalizada Para entidades no encontradas en la base de datos.
             ConflictException::class            => 409, //personalizada Para conflictos de datos, como emails duplicados.
-            default                             => 500, //// Si no es ninguno de los anteriores, es un error inesperado
+            default                             => 500,
         };
     }
 }

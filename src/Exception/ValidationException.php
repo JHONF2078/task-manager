@@ -2,6 +2,10 @@
 
 namespace App\Exception;
 
+/**
+ * Excepción lanzada cuando la validación de datos falla.
+ * Contiene un array de errores de validación detallados (violations)
+ */
 class ValidationException extends \InvalidArgumentException
 {
     private array $errors;
