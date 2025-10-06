@@ -110,6 +110,7 @@ class UserService
 
     private function createListUsersQuery(?string $email = null)
     {
+        //->select('u.id, u.email, u.name');
         $qb    = $this->userRepository->createQueryBuilder('u');
         $email = $email !== null ? trim($email) : null;
         if ($email !== null && $email !== '') {

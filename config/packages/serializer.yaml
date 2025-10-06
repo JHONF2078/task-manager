@@ -1,0 +1,9 @@
+framework:
+    serializer:
+        default_context:
+            datetime_format: 'Y-m-d H:i:s'
+        enable_attributes: true
+        mapping:
+            paths: ['%kernel.project_dir%/config/serializer']
+        name_converter: 'serializer.name_converter.camel_case_to_snake_case'
+

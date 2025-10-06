@@ -44,21 +44,38 @@ function buildQuery(params){
 
 function convertServerTask(t){
   if(!t) return t;
-  return {
+
+  // Log temporal para debugging
+  console.log('Backend response - all properties:', Object.keys(t));
+  console.log('Backend response - dates:', {
+    createdAt: t.createdAt,
+    created_at: t.created_at,
+    updatedAt: t.updatedAt,
+    updated_at: t.updated_at
+  });
+
+  const converted = {
     id: t.id,
     title: t.title,
     description: t.description,
     status: t.status,
     priority: t.priority,
-    dueDate: t.dueDate,
+    dueDate: t.dueDate || t.due_date || null,
     categories: t.categories || [],
-    tags: t.categories || [], // alias interno para UI (usábamos tags)
-    assignee: t.assignedTo ? { id: t.assignedTo.id, email: t.assignedTo.email } : null,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
-    active: t.active,
-    deletedAt: t.deletedAt,
+    tags: t.categories || [],
+    assignee: (t.assignedTo || t.assigned_to) ? {
+      id: (t.assignedTo || t.assigned_to).id,
+      email: (t.assignedTo || t.assigned_to).email
+    } : null,
+    createdAt: t.createdAt || t.created_at || null,
+    updatedAt: t.updatedAt || t.updated_at || null,
+    active: t.active !== undefined ? t.active : true,
+    deletedAt: t.deletedAt || t.deleted_at || null,
   };
+
+  console.log('Converted dates:', { createdAt: converted.createdAt, updatedAt: converted.updatedAt });
+
+  return converted;
 }
 
 function preparePayload(task){

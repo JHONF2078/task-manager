@@ -46,7 +46,7 @@ export const useAuthStore = defineStore('auth', {
     async bootstrap(){
       // Intento de refresh silencioso inicial si no tengo access token válido
       if (!this.token || this.isExpired) {
-        await this.silentRefresh();
+          await this.silentRefresh();
       }
     }
   }

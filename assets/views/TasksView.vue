@@ -1,33 +1,3 @@
-<script setup>
-import { onMounted } from 'vue';
-import { useTasks, TASK_STATUSES, TASK_PRIORITIES } from '../composables/useTasks';
-import { useUsers } from '../composables/useUsers';
-import TaskFilter from '../components/tasks/TaskFilter.vue';
-import TaskList from '../components/tasks/TaskList.vue';
-
-const {
-  tasks,
-  loading,
-  error,
-  filters,
-  setFilters,
-  resetFilters,
-  fetchTasks,
-  meta,
-  createTask,
-  updateTask,
-  deleteTask,
-  saving
-} = useTasks();
-
-// Cargar usuarios para el filtro "Asignado a"
-const { users } = useUsers();
-
-onMounted(() => {
-  fetchTasks(); // Solo una vez al montar la vista
-});
-</script>
-
 <template>
   <v-container fluid>
     <v-row>
@@ -61,6 +31,36 @@ onMounted(() => {
     </v-row>
   </v-container>
 </template>
+
+<script setup>
+  import { onMounted } from 'vue';
+  import { useTasks, TASK_STATUSES, TASK_PRIORITIES } from '../composables/useTasks';
+  import { useUsers } from '../composables/useUsers';
+  import TaskFilter from '../components/tasks/TaskFilter.vue';
+  import TaskList from '../components/tasks/TaskList.vue';
+
+  const {
+    tasks,
+    loading,
+    error,
+    filters,
+    setFilters,
+    resetFilters,
+    fetchTasks,
+    meta,
+    createTask,
+    updateTask,
+    deleteTask,
+    saving
+  } = useTasks();
+
+  // Cargar usuarios para el filtro "Asignado a"
+  const { users } = useUsers();
+
+  onMounted(() => {
+    fetchTasks(); // Solo una vez al montar la vista
+  });
+</script>
 
 <style scoped>
 

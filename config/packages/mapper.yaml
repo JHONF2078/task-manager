@@ -1,0 +1,4 @@
+parameters:
+    # Estrategia de mapeo: 'serializer', 'auto_mapper', o 'manual_mapper'
+    mapper_strategy: 'serializer'
+

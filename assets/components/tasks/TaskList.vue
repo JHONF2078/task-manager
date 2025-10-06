@@ -103,7 +103,7 @@ const headers = computed(()=> [
 // Dataset transformado para orden estable por email
 const tasksForTable = computed(()=> (props.tasks || []).map(t => ({
   ...t,
-  assigneeDisplay: t.assignee?.email || (typeof t.assignee === 'object' ? t.assignee?.email : (t.assignee?.name || t.assignee || '-')) || '-' // fallback defensivo
+  assigneeDisplay: t.assignee?.email || (typeof t.assignee === 'object' ? t.assignee?.email : (t.assignee?.name || t.assignee || '-')) || '-'
 })));
 
 // Estado de ordenamiento local

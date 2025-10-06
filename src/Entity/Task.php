@@ -4,6 +4,9 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Annotation\Context;
+use Symfony\Component\Serializer\Annotation\SerializedName;
 
 #[ORM\Entity(repositoryClass: 'App\Repository\TaskRepository')]
 #[ORM\HasLifecycleCallbacks]
@@ -18,35 +21,46 @@ class Task
     public const PRIORITY_ALTA  = 'alta';
 
     #[ORM\Id, ORM\GeneratedValue, ORM\Column(type: 'integer')]
+    #[Groups(['task:read'])]
     private int $id;
 
     #[ORM\Column(type: 'string')]
     #[Assert\NotBlank(message: 'El título es obligatorio')]
     #[Assert\Length(max: 255, maxMessage: 'El título no puede exceder {{ limit }} caracteres')]
+    #[Groups(['task:read'])]
     private string $title;
 
     #[ORM\Column(type: 'text', nullable: true)]
     #[Assert\Length(max: 5000, maxMessage: 'La descripción es demasiado larga')]
+    #[Groups(['task:read'])]
     private ?string $description = null;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['task:read'])]
+    #[Context(['datetime_format' => 'Y-m-d H:i:s'])]
     private \DateTimeInterface $createdAt;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['task:read'])]
+    #[Context(['datetime_format' => 'Y-m-d H:i:s'])]
     private \DateTimeInterface $updatedAt;
 
     #[ORM\Column(type: 'string')]
     #[Assert\Choice(callback: 'validStatuses', message: 'Estado inválido')]
+    #[Groups(['task:read'])]
     private string $status;
 
     #[ORM\Column(type: 'string')]
     #[Assert\Choice(callback: 'validPriorities', message: 'Prioridad inválida')]
+    #[Groups(['task:read'])]
     private string $priority;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['task:read'])]
     private ?\DateTimeInterface $dueDate = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
+    #[Groups(['task:read'])]
     private ?User $assignedTo = null;
 
     #[ORM\Column(type: 'json', nullable: true)]

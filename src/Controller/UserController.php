@@ -2,29 +2,30 @@
 
 namespace App\Controller;
 
-use App\Dto\UserRegistrationInput;
+use App\Entity\User;
 use App\Exception\ConflictException;
 use App\Exception\EntityNotFoundException;
 use App\Exception\ValidationException;
 use App\Service\AuthService;
 use App\Service\UserService;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use App\Service\validation\UserValidationService;
+use DateTimeInterface;
+use InvalidArgumentException;
+use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class UserController extends AbstractController
 {
     public function __construct(
-        private UserService $userService,
-        private AuthService $authService,
-        private JWTTokenManagerInterface $jwtManager,
-        private TokenStorageInterface $tokenStorage,
-        private ValidatorInterface $validator,
+        private readonly UserService           $userService,
+        private readonly AuthService           $authService,
+        private readonly TokenStorageInterface $tokenStorage,
+        private readonly UserValidationService $userValidationService,
     ) {
     }
 
@@ -33,8 +34,8 @@ class UserController extends AbstractController
     public function profile() : JsonResponse
     {
         $token = $this->tokenStorage->getToken();
-        $user  = $token ? $token->getUser() : null;
-        if (!$user || !$user instanceof \App\Entity\User) {
+        $user  = $token?->getUser();
+        if (!$user instanceof User) {
             throw new AuthenticationException('No autenticado');
         }
         return $this->json([
@@ -49,8 +50,8 @@ class UserController extends AbstractController
     public function list(Request $request) : JsonResponse
     {
         $token = $this->tokenStorage->getToken();
-        $user  = $token ? $token->getUser() : null;
-        if (!$user || !$user instanceof \App\Entity\User) {
+        $user  = $token?->getUser();
+        if (!$user instanceof User) {
             throw new AuthenticationException('No autenticado');
         }
         $email = $request->query->get('email');
@@ -61,7 +62,7 @@ class UserController extends AbstractController
             'email'     => $u->getEmail(),
             'roles'     => $u->getRoles(),
             'active'    => $u->isActive(),
-            'deletedAt' => $u->getDeletedAt() ? $u->getDeletedAt()->format(DATE_ISO8601) : null,
+            'deletedAt' => $u->getDeletedAt() ? $u->getDeletedAt()->format(DateTimeInterface::ATOM) : null,
         ], $users);
         return $this->json($data);
     }
@@ -71,42 +72,33 @@ class UserController extends AbstractController
     public function create(Request $request) : JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
-        $data          = json_decode($request->getContent(), true) ?? [];
-        $dto           = new UserRegistrationInput();
-        $dto->email    = (string)($data['email'] ?? '');
-        $dto->password = (string)($data['password'] ?? '');
-        $dto->name     = isset($data['name']) ? (string)$data['name'] : null;
-        $violations    = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            $errs = [];
-            foreach ($violations as $v) {
-                $errs[] = ['field' => $v->getPropertyPath(),'message' => $v->getMessage()];
-            } throw new ValidationException($errs);
-        }
-        $roles = $data['roles'] ?? ['ROLE_USER'];
-        if (!is_array($roles)) {
-            $roles = ['ROLE_USER'];
-        }
-        $allowed = ['ROLE_USER','ROLE_ADMIN'];
-        $roles   = array_values(array_intersect($roles, $allowed));
-        if (empty($roles)) {
-            $roles = ['ROLE_USER'];
-        }
+        $data = json_decode($request->getContent(), true) ?? [];
+
         try {
-            $created = $this->authService->register($dto->email, $dto->password, $roles, $dto->name ?? '');
+            $validatedData = $this->userValidationService->validateAndNormalizeUserData($data);
+            $roles         = $this->userValidationService->normalizeRoles($data['roles'] ?? null);
+
+            $created = $this->authService->register(
+                $validatedData['normalizedData']['email'],
+                $validatedData['normalizedData']['password'],
+                $roles,
+                $validatedData['normalizedData']['name'] ?? ''
+            );
+
             if (!$created) {
                 throw new ConflictException('Email ya registrado');
             }
         } catch (ConflictException $ce) {
             return $this->json(['error' => $ce->getMessage()], 409);
         }
+
         return $this->json([
             'id'        => $created->getId(),
             'name'      => $created->getName(),
             'email'     => $created->getEmail(),
             'roles'     => $created->getRoles(),
             'active'    => $created->isActive(),
-            'deletedAt' => $created->getDeletedAt() ? $created->getDeletedAt()->format(DATE_ISO8601) : null,
+            'deletedAt' => $created->getDeletedAt()?->format(DateTimeInterface::ATOM),
         ], 201);
     }
 
@@ -124,7 +116,7 @@ class UserController extends AbstractController
             $user = $this->userService->updateUser($user, $data ?? []);
         } catch (ValidationException $ve) {
             return $this->json(['error' => $ve->getMessage(), 'violations' => $ve->getViolations()], 400);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage(), 'violations' => []], 400);
         }
         return $this->json([
@@ -149,7 +141,7 @@ class UserController extends AbstractController
             'email'     => $user->getEmail(),
             'roles'     => $user->getRoles(),
             'active'    => $user->isActive(),
-            'deletedAt' => $user->getDeletedAt() ? $user->getDeletedAt()->format(DATE_ISO8601) : null,
+            'deletedAt' => $user->getDeletedAt()?->format(DateTimeInterface::ATOM),
         ]);
     }
 
@@ -195,7 +187,7 @@ class UserController extends AbstractController
             } else {
                 $this->userService->deactivateUser($user);
             }
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }
         return $this->json([
@@ -203,7 +195,7 @@ class UserController extends AbstractController
             'email'     => $user->getEmail(),
             'roles'     => $user->getRoles(),
             'active'    => $user->isActive(),
-            'deletedAt' => $user->getDeletedAt() ? $user->getDeletedAt()->format(DATE_ISO8601) : null,
+            'deletedAt' => $user->getDeletedAt()?->format(DateTimeInterface::ATOM),
         ]);
     }
 }

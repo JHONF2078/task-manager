@@ -1,5 +1,7 @@
 // Servicio simple para gestionar el token CSRF obtenido desde /api/csrf
 // csrfToken variable singleton en memoria, ya que esta definida fuera de la funcion
+import { httpGet } from './http';
+
 let csrfToken = null;
 let pending = null;
 
@@ -44,23 +46,12 @@ export async function ensureCsrf(force = false) {
     while (attempts < maxAttempts) {
       attempts++;
       try {
-        const resp = await fetch('/api/csrf', {
-          method: 'GET',
-          credentials: 'include',
+        const data = await httpGet('/api/csrf', {
           headers: {
-            'Accept': 'application/json',
             'Cache-Control': 'no-cache'
           }
         });
-        if (!resp.ok) {
-          const text = await resp.text().catch(()=> '');
-          console.error('[CSRF] fallo intento', attempts, 'status', resp.status, 'body', text);
-          if (attempts >= maxAttempts) {
-            throw new Error(`Respuesta no OK (${resp.status})`);
-          }
-          continue;
-        }
-        const data = await resp.json();
+
         if (!data || !data.token) {
           console.error('[CSRF] respuesta sin token', data);
           if (attempts >= maxAttempts) {
@@ -75,9 +66,10 @@ export async function ensureCsrf(force = false) {
         setCsrfDoubleSubmitCookie(cookieName, token); // Crea la cookie con valor correcto
         csrfToken = token;
         return csrfToken;
-      } catch (e) {
+      } catch (error) {
+        console.error('[CSRF] fallo intento', attempts, 'status', error.status, 'message', error.message);
         if (attempts >= maxAttempts) {
-          throw e;
+          throw error;
         }
       }
     }

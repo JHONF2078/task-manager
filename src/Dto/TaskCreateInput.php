@@ -3,6 +3,7 @@
 namespace App\Dto;
 
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\SerializedName;
 
 class TaskCreateInput
 {
@@ -10,6 +11,7 @@ class TaskCreateInput
     #[Assert\Length(max:255, maxMessage: 'El título no puede exceder {{ limit }} caracteres')]
     public string $title;
 
+    #[SerializedName("description")]
     #[Assert\Length(max:5000, maxMessage: 'La descripción es demasiado larga')]
     public ?string $description = null;
 

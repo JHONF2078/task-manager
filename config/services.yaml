@@ -41,3 +41,20 @@ services:
         arguments:
             $fromAddress: '%app.mail.from_address%'
             $fromName: '%app.mail.from_name%'
+
+    # === AutoMapper Configuration ===
+    AutoMapperPlus\Configuration\AutoMapperConfigInterface:
+        class: AutoMapperPlus\Configuration\AutoMapperConfig
+        factory: ['@App\Mapper\AutoMapperConfigFactory', 'create']
+        configurator: ['@App\Mapper\AutoMapperConfigFactory', 'configure']
+
+    AutoMapperPlus\AutoMapperInterface:
+        class: AutoMapperPlus\AutoMapper
+        arguments: ['@AutoMapperPlus\Configuration\AutoMapperConfigInterface']
+
+    App\Service\MapperHelper:
+        arguments:
+            $params: '@parameter_bag'
+            $autoMapper: '@AutoMapperPlus\AutoMapperInterface'
+        autowire: true
+        autoconfigure: true

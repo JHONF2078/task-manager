@@ -176,6 +176,8 @@
       <path value="$PROJECT_DIR$/vendor/react/promise" />
       <path value="$PROJECT_DIR$/vendor/react/socket" />
       <path value="$PROJECT_DIR$/vendor/evenement/evenement" />
+      <path value="$PROJECT_DIR$/vendor/mark-gerarts/automapper-plus-bundle" />
+      <path value="$PROJECT_DIR$/vendor/mark-gerarts/auto-mapper-plus" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2">

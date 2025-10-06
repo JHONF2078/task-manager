@@ -2,92 +2,87 @@
 
 namespace App\Repository;
 
+use App\Dto\TaskFilterDto;
 use App\Entity\Task;
+use App\Service\TaskFilterService;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
 class TaskRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {
+    public function __construct(
+        ManagerRegistry $registry,
+        private readonly TaskFilterService $filterService
+    ) {
         parent::__construct($registry, Task::class);
     }
-    // Métodos personalizados para Task
 
     /**
-     * @param array       $filters
-     * @param int         $page      1-based
-     * @param int         $limit
-     * @param string|null $sort
-     * @param string      $direction
+     * Busca tareas aplicando filtros y paginación
      *
-     * @return array [data=> Task[], total=>int]
+     * @param TaskFilterDto $filters   DTO con los criterios de filtrado
+     * @param int          $page      Número de página (1-based)
+     * @param int          $limit     Límite de resultados por página
+     * @param string|null  $sort      Campo de ordenamiento
+     * @param string       $direction Dirección del ordenamiento (asc/desc)
+     *
+     * @return array{data: Task[], total: int}
      */
-    public function search(array $filters, int $page = 1, int $limit = 20, ?string $sort = null, string $direction = 'asc') : array
-    {
-        $qb = $this->createQueryBuilder('t');
+    public function search(
+        TaskFilterDto $filters,
+        int $page = 1,
+        int $limit = 20,
+        ?string $sort = null,
+        string $direction = 'asc'
+    ): array {
+        $qb = $this->createQueryBuilder('t')
+            ->select('t', 'u')
+            ->leftJoin('t.assignedTo', 'u');
 
-        // Soft delete filter (by default only active)
-        $includeInactive = !empty($filters['includeInactive']);
-        if (!$includeInactive) {
-            $qb->andWhere('t.isActive = :active')->setParameter('active', true);
-        }
+        // Aplicar filtros
+        $this->filterService->applyFilters($qb, $filters);
 
-        if (!empty($filters['q'])) {
-            $qb->andWhere('t.title LIKE :q OR t.description LIKE :q')->setParameter('q', '%' . $filters['q'] . '%');
-        }
-        if (!empty($filters['status'])) {
-            $qb->andWhere('t.status = :status')->setParameter('status', $filters['status']);
-        }
-        if (!empty($filters['priority'])) {
-            $qb->andWhere('t.priority = :priority')->setParameter('priority', $filters['priority']);
-        }
-        if (!empty($filters['assignedTo'])) {
-            $qb->andWhere('t.assignedTo = :assigned')->setParameter('assigned', (int)$filters['assignedTo']);
-        }
-        if (!empty($filters['dueFrom'])) {
-            $qb->andWhere('t.dueDate >= :dueFrom')->setParameter('dueFrom', $filters['dueFrom']);
-        }
-        if (!empty($filters['dueTo'])) {
-            $qb->andWhere('t.dueDate <= :dueTo')->setParameter('dueTo', $filters['dueTo']);
-        }
-        if (!empty($filters['createdFrom'])) {
-            $qb->andWhere('t.createdAt >= :cFrom')->setParameter('cFrom', $filters['createdFrom']);
-        }
-        if (!empty($filters['createdTo'])) {
-            $qb->andWhere('t.createdAt <= :cTo')->setParameter('cTo', $filters['createdTo']);
-        }
-        if (!empty($filters['categories'])) {
-            // Simple LIKE based filtering (fallback if JSON functions not available in portable DQL)
-            foreach ($filters['categories'] as $idx => $cat) {
-                $qb->andWhere($qb->expr()->like('t.categories', ':cat' . $idx))
-                   ->setParameter('cat' . $idx, '%"' . addslashes($cat) . '"%');
-            }
-        }
+        // Aplicar ordenamiento
+        $this->filterService->applySorting($qb, $sort, $direction);
 
-        if ($sort) {
-            $allowed = ['title','status','priority','dueDate','createdAt','updatedAt'];
-            if (in_array($sort, $allowed, true)) {
-                $direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
-                $qb->addOrderBy('t.' . $sort, $direction);
-            }
-        } else {
-            $qb->addOrderBy('t.createdAt', 'DESC');
-        }
-
-        $page  = max(1, $page);
+        // Aplicar paginación
+        $page = max(1, $page);
         $limit = max(1, min(100, $limit));
-        $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit);
+        $qb->setFirstResult(($page - 1) * $limit)
+           ->setMaxResults($limit);
 
-        $paginator = new Paginator($qb, true);
-        $total     = count($paginator);
-        $data      = iterator_to_array($paginator->getIterator());
+        // Usar Doctrine Paginator para conteo preciso
+        $query = $qb->getQuery();
+
+        // Aplicar caché si los filtros lo permiten
+        if ($this->isCacheable($filters)) {
+            $query->enableResultCache(3600, 'tasks_' . md5(serialize([
+                'filters' => $filters,
+                'page' => $page,
+                'limit' => $limit,
+                'sort' => $sort,
+                'direction' => $direction
+            ])));
+        }
+
+        $paginator = new Paginator($query, true);
 
         return [
-            'data'  => $data,
-            'total' => $total,
+            'data' => iterator_to_array($paginator),
+            'total' => count($paginator)
         ];
+    }
+
+    /**
+     * Determina si una consulta puede ser cacheada basada en sus filtros
+     */
+    private function isCacheable(TaskFilterDto $filters): bool
+    {
+        // No cachear si hay búsqueda de texto o filtros de fecha reciente
+        return !$filters->searchTerm &&
+               !$filters->createdFrom &&
+               !$filters->createdTo;
     }
 
     /**

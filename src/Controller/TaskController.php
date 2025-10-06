@@ -3,186 +3,211 @@
 namespace App\Controller;
 
 use App\Dto\TaskCreateInput;
+use App\Dto\TaskFilterDto;
+use App\Dto\TaskResponseDto;
 use App\Dto\TaskUpdateInput;
 use App\Entity\Task;
 use App\Exception\EntityNotFoundException;
 use App\Exception\ValidationException;
+use App\Mapper\TaskInputMapper;
 use App\Repository\TaskRepository;
+use App\Service\MapperHelper;
 use App\Service\TaskService;
+use AutoMapperPlus\AutoMapperInterface;
+use AutoMapperPlus\Exception\UnregisteredMappingException;
+use DateTimeImmutable;
+use Exception;
+use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/tasks')]
 class TaskController extends AbstractController
 {
     public function __construct(
-        private TaskService $taskService,
-        private TaskRepository $taskRepository,
-        private ValidatorInterface $validator,
+        private readonly TaskService $taskService,
+        private readonly TaskRepository $taskRepository,
+        private readonly ValidatorInterface $validator,
+        private readonly SerializerInterface $serializer,
+        private readonly AutoMapperInterface $autoMapper,
+        private readonly TaskInputMapper $taskInputMapper,
+        private readonly LoggerInterface $logger,
+        private readonly MapperHelper $mapperHelper,
     ) {
     }
 
+    /**
+     * Lista las tareas con filtros y paginación
+     *
+     * @param Request $request Request con los parámetros de filtrado y paginación
+     *
+     * @throws UnregisteredMappingException
+     *
+     * @return JsonResponse
+     */
     #[Route('', name: 'api_tasks_list', methods: ['GET'])]
     public function list(Request $request) : JsonResponse
     {
-        // Parseo robusto de fechas de vencimiento
-        $dueFromRaw = $request->query->get('dueFrom');
-        $dueToRaw   = $request->query->get('dueTo');
-        $dueFrom    = $this->parseDateParam($dueFromRaw, false);
-        $dueTo      = $this->parseDateParam($dueToRaw, true);
-        if ($dueFrom && $dueTo && $dueFrom > $dueTo) { // swap si invertido
-            [$dueFrom, $dueTo] = [$dueTo, $dueFrom];
-        }
+        try {
+            // Convertir los query parameters a JSON
+            $filterParams = json_encode([
+                'q'               => $request->query->get('q'),
+                'status'          => $request->query->get('status'),
+                'priority'        => $request->query->get('priority'),
+                'assignedTo'      => $request->query->get('assignedTo'),
+                'dueFrom'         => $this->parseDateParam($request->query->get('dueFrom')),
+                'dueTo'           => $this->parseDateParam($request->query->get('dueTo'), true),
+                'createdFrom'     => $this->parseDateParam($request->query->get('createdFrom')),
+                'createdTo'       => $this->parseDateParam($request->query->get('createdTo'), true),
+                'categories'      => $request->query->get('categories'),
+                'includeInactive' => $request->query->getBoolean('includeInactive')
+            ]);
 
-        $filters = [
-            'q'               => $request->query->get('q'),
-            'status'          => $request->query->get('status'),
-            'priority'        => $request->query->get('priority'),
-            'assignedTo'      => $request->query->get('assignedTo'),
-            'dueFrom'         => $dueFrom,
-            'dueTo'           => $dueTo,
-            'includeInactive' => $request->query->getBoolean('includeInactive', false),
-        ];
-        $categoriesParam = $request->query->get('categories');
-        if ($categoriesParam) {
-            $filters['categories'] = array_filter(array_map('trim', explode(',', $categoriesParam)));
-        }
-        $page      = max(1, (int)$request->query->get('page', 1));
-        $limit     = max(1, min(100, (int)$request->query->get('limit', 20)));
-        $sort      = $request->query->get('sort');
-        $direction = $request->query->get('direction', 'asc');
+            // Usar MapperHelper para deserializar
+            $filters = $this->mapperHelper->deserialize($filterParams, TaskFilterDto::class, 'json');
 
-        $result = $this->taskRepository->search($filters, $page, $limit, $sort, $direction);
-        $data   = array_map(fn (Task $t) => $this->serializeTask($t), $result['data']);
-        $total  = $result['total'];
-        $pages  = (int)ceil($total / $limit);
+            // Validar los filtros
+            $violations = $this->validator->validate($filters);
+            if (count($violations) > 0) {
+                throw new ValidationException($violations);
+            }
 
-        return $this->json([
-            'meta' => [
+            $page      = max(1, (int)$request->query->get('page', 1));
+            $limit     = max(1, min(100, (int)$request->query->get('limit', 20)));
+            $sort      = $request->query->get('sort');
+            $direction = $request->query->get('direction', 'asc');
+
+            $result = $this->taskRepository->search($filters, $page, $limit, $sort, $direction);
+
+            // Usar STRATEGY_MANUAL_MAPPER_FULL para asegurar la serialización completa
+            $dtos = $this->mapperHelper->mapCollection(
+                $result['data'],
+                TaskResponseDto::class,
+                MapperHelper::STRATEGY_MANUAL_MAPPER_FULL
+            );
+
+            return $this->json([
+                'data'  => $dtos,
+                'total' => $result['total'],
                 'page'  => $page,
-                'limit' => $limit,
-                'total' => $total,
-                'pages' => $pages,
-            ],
-            'data' => $data,
-        ]);
+                'limit' => $limit
+            ]);
+        } catch (ValidationException $e) {
+            return $this->json(['error' => 'Filtros inválidos', 'violations' => $e->getViolations()], 400);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al listar tareas: ' . $e->getMessage());
+            return $this->json(['error' => 'Error al procesar la solicitud'], 500);
+        }
     }
 
-    #[Route('/{id}', name: 'api_tasks_get', methods: ['GET'], requirements: ['id' => '\\d+'])]
+    #[Route(path: '/{id}', name: 'api_tasks_get', requirements: ['id' => '\\d+'], methods: ['GET'])]
     public function getOne(int $id, Request $request) : JsonResponse
     {
-        $includeInactive = $request->query->getBoolean('includeInactive', false);
-        $task            = $this->taskService->get($id, $includeInactive);
+        $includeInactive = $request->query->getBoolean('includeInactive');
+        $task = $this->taskService->get($id, $includeInactive);
         if (!$task) {
             throw new EntityNotFoundException('Tarea', $id);
         }
-        return $this->json($this->serializeTask($task));
+
+        $mappedTask = $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL);
+
+        // Log temporal para depuración
+        $this->logger->debug('Task response:', [
+            'createdAt' => $task->getCreatedAt()->format('Y-m-d H:i:s'),
+            'updatedAt' => $task->getUpdatedAt()->format('Y-m-d H:i:s'),
+            'mapped' => $mappedTask
+        ]);
+
+        return $this->json($mappedTask);
     }
 
-    #[Route('', name: 'api_tasks_create', methods: ['POST'])]
+    #[Route(path: '', name: 'api_tasks_create', methods: ['POST'])]
     public function create(Request $request) : JsonResponse
     {
-        $data             = json_decode($request->getContent(), true) ?? [];
-        $dto              = new TaskCreateInput();
-        $dto->title       = (string)($data['title'] ?? '');
-        $dto->description = $data['description'] ?? null;
-        $dto->status      = $data['status']      ?? null;
-        $dto->priority    = $data['priority']    ?? null;
-        $dto->dueDate     = $data['dueDate']     ?? null;
-        $dto->assignedTo  = isset($data['assignedTo']) && $data['assignedTo'] !== '' ? (int)$data['assignedTo'] : null;
-        $dto->categories  = $data['categories'] ?? null;
-        $violations       = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            $errors = [];
-            foreach ($violations as $v) {
-                $errors[] = ['field' => $v->getPropertyPath(),'message' => $v->getMessage()];
-            } throw new ValidationException($errors);
-        }
         try {
-            $task = $this->taskService->createFromDto($dto);
-            return $this->json($this->serializeTask($task), 201);
-        } catch (\InvalidArgumentException $e) {
+            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskCreateInput::class, 'json');
+            $this->throwIfViolations($this->validator->validate($dto));
+
+            $task = $this->autoMapper->map($dto, Task::class);
+            $task = $this->taskService->createFromEntity($task);
+
+            return $this->json(
+                $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+            , 201);
+        } catch (UnregisteredMappingException $e) {
+            return $this->json(['error' => 'Error de mapeo: ' . $e->getMessage(), 'violations' => []], 500);
+        } catch (InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage(), 'violations' => []], 400);
         }
     }
 
-    #[Route('/{id}', name: 'api_tasks_replace', methods: ['PUT'], requirements: ['id' => '\\d+'])]
+    #[Route(path: '/{id}', name: 'api_tasks_replace', requirements: ['id' => '\\d+'], methods: ['PUT'])]
     public function replace(int $id, Request $request) : JsonResponse
     {
         $task = $this->taskService->get($id, true);
         if (!$task) {
             return $this->json(['error' => 'Tarea no encontrada'], 404);
         }
-        $data             = json_decode($request->getContent(), true) ?? [];
-        $dto              = new TaskCreateInput(); // Para PUT requerimos título
-        $dto->title       = (string)($data['title'] ?? '');
-        $dto->description = $data['description'] ?? null;
-        $dto->status      = $data['status']      ?? null;
-        $dto->priority    = $data['priority']    ?? null;
-        $dto->dueDate     = $data['dueDate']     ?? null;
-        $dto->assignedTo  = isset($data['assignedTo']) && $data['assignedTo'] !== '' ? (int)$data['assignedTo'] : null;
-        $dto->categories  = $data['categories'] ?? null;
-        $violations       = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            $errors = [];
-            foreach ($violations as $v) {
-                $errors[] = ['field' => $v->getPropertyPath(),'message' => $v->getMessage()];
-            } throw new ValidationException($errors);
-        }
+
         try {
-            $updated = $this->taskService->updateFromDto($task, (function (TaskCreateInput $c) {
-                $u              = new TaskUpdateInput();
-                $u->title       = $c->title;
-                $u->description = $c->description;
-                $u->status      = $c->status;
-                $u->priority    = $c->priority;
-                $u->dueDate     = $c->dueDate;
-                $u->assignedTo  = $c->assignedTo;
-                $u->categories  = $c->categories;
-                return $u;
-            })($dto), false);
-            return $this->json($this->serializeTask($updated));
-        } catch (\InvalidArgumentException $e) {
-            return $this->json(['error' => $e->getMessage(),'violations' => []], 400);
+            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskCreateInput::class, 'json');
+            $this->throwIfViolations($this->validator->validate($dto));
+
+            $updatedEntity = $this->autoMapper->map($dto, Task::class);
+            $updated = $this->taskService->updateFromEntity($task, $updatedEntity, false);
+
+            return $this->json(
+                $this->mapperHelper->map($updated, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+            );
+        } catch (UnregisteredMappingException $e) {
+            return $this->json([
+                'error' => 'Error de mapeo: ' . $e->getMessage(),
+                'violations' => []
+            ], 500);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage(), 'violations' => []], 400);
         }
     }
 
-    #[Route('/{id}', name: 'api_tasks_patch', methods: ['PATCH'], requirements: ['id' => '\\d+'])]
+    #[Route(path: '/{id}', name: 'api_tasks_patch', requirements: ['id' => '\\d+'], methods: ['PATCH'])]
     public function patch(int $id, Request $request) : JsonResponse
     {
         $task = $this->taskService->get($id, true);
         if (!$task) {
             return $this->json(['error' => 'Tarea no encontrada'], 404);
         }
-        $data = json_decode($request->getContent(), true) ?? [];
-        $dto  = new TaskUpdateInput();
-        foreach (['title','description','status','priority','dueDate','categories'] as $k) {
-            if (array_key_exists($k, $data)) {
-                $dto->$k = $data[$k];
-            }
-        }
-        if (array_key_exists('assignedTo', $data)) {
-            $dto->assignedTo = $data['assignedTo'] !== null && $data['assignedTo'] !== '' ? (int)$data['assignedTo'] : null;
-        }
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            $errors = [];
-            foreach ($violations as $v) {
-                $errors[] = ['field' => $v->getPropertyPath(),'message' => $v->getMessage()];
-            } throw new ValidationException($errors);
-        }
+
         try {
-            $updated = $this->taskService->updateFromDto($task, $dto, true);
-            return $this->json($this->serializeTask($updated));
-        } catch (\InvalidArgumentException $e) {
-            return $this->json(['error' => $e->getMessage(),'violations' => []], 400);
+            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskUpdateInput::class, 'json');
+            $this->throwIfViolations($this->validator->validate($dto));
+
+            $updatedEntity = $this->autoMapper->mapToObject($dto, $task);
+            $updated = $this->taskService->updateFromEntity($task, $updatedEntity);
+
+            return $this->json(
+                $this->mapperHelper->map($updated, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+            );
+        } catch (UnregisteredMappingException $e) {
+            return $this->json([
+                'error' => 'Error de mapeo: ' . $e->getMessage(),
+                'violations' => []
+            ], 500);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage(), 'violations' => []], 400);
         }
     }
 
-    #[Route('/{id}', name: 'api_tasks_delete', methods: ['DELETE'], requirements: ['id' => '\\d+'])]
+    #[Route(
+        path: '/{id}',
+        name: 'api_tasks_delete',
+        requirements: ['id' => '\\d+'],
+        methods: ['DELETE']
+    )]
     public function delete(int $id) : JsonResponse
     {
         $task = $this->taskService->get($id, true);
@@ -190,10 +215,17 @@ class TaskController extends AbstractController
             return $this->json(['error' => 'Tarea no encontrada'], 404);
         }
         $this->taskService->softDelete($task);
-        return $this->json($this->serializeTask($task));
+        return $this->json(
+            $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+        );
     }
 
-    #[Route('/{id}/restore', name: 'api_tasks_restore', methods: ['PATCH'], requirements: ['id' => '\\d+'])]
+    #[Route(
+        path: '/{id}/restore',
+        name: 'api_tasks_restore',
+        requirements: ['id' => '\\d+'],
+        methods: ['PATCH']
+    )]
     public function restore(int $id) : JsonResponse
     {
         $task = $this->taskService->get($id, true);
@@ -201,48 +233,30 @@ class TaskController extends AbstractController
             return $this->json(['error' => 'Tarea no encontrada'], 404);
         }
         $this->taskService->restore($task);
-        return $this->json($this->serializeTask($task));
+        return $this->json(
+            $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+        );
     }
 
-    #[Route('/explain', name: 'api_tasks_explain', methods: ['GET'])]
+    #[Route(
+        path: '/explain',
+        name: 'api_tasks_explain',
+        methods: ['GET']
+    )]
     public function explain(Request $request) : JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
-
-        $dueFrom = $this->parseDateParam($request->query->get('dueFrom'), false);
-        $dueTo   = $this->parseDateParam($request->query->get('dueTo'), true);
-        if ($dueFrom && $dueTo && $dueFrom > $dueTo) {
-            [$dueFrom, $dueTo] = [$dueTo, $dueFrom];
-        }
-
-        $filters = [
-            'q'               => $request->query->get('q'),
-            'status'          => $request->query->get('status'),
-            'priority'        => $request->query->get('priority'),
-            'assignedTo'      => $request->query->get('assignedTo'),
-            'dueFrom'         => $dueFrom,
-            'dueTo'           => $dueTo,
-            'includeInactive' => $request->query->getBoolean('includeInactive', false),
-        ];
-        $categoriesParam = $request->query->get('categories');
-        if ($categoriesParam) {
-            $filters['categories'] = array_filter(array_map('trim', explode(',', $categoriesParam)));
-        }
-
+        $filters      = $this->buildTaskFilters($request);
         $sort         = $request->query->get('sort');
         $direction    = $request->query->get('direction', 'asc');
-        $analyze      = $request->query->getBoolean('analyze', false);
+        $analyze      = $request->query->getBoolean('analyze');
         $timeoutMsRaw = $request->query->get('timeoutMs');
         $timeoutMs    = is_numeric($timeoutMsRaw) ? max(1, (int)$timeoutMsRaw) : null;
-        // Limitar a 30s máximo para evitar abusos
         if ($timeoutMs !== null && $timeoutMs > 30000) {
             $timeoutMs = 30000;
         }
-
-        $plan = $this->taskRepository->explainSearch($filters, $sort, $direction, $analyze, $timeoutMs);
-
+        $plan            = $this->taskRepository->explainSearch($filters, $sort, $direction, $analyze, $timeoutMs);
         $recommendations = $this->buildRecommendations($filters, $plan, $sort);
-
         return $this->json([
             'filters'   => array_filter($filters, fn ($v) => $v !== null && $v !== ''),
             'sort'      => $sort,
@@ -306,7 +320,7 @@ class TaskController extends AbstractController
             $recs[] = 'Filtro por categories usando LIKE. Considera normalizar a tabla relacional (task_category) o JSON con índices especializados.';
         }
 
-        if ($sort && in_array($sort, ['createdAt','updatedAt','dueDate']) && !str_contains(strtolower($sql), $sort)) {
+        if (in_array($sort, ['createdAt','updatedAt','dueDate']) && !str_contains(strtolower($sql), $sort)) {
             $recs[] = 'Orden por ' . $sort . ' podría necesitar índice para evitar sort costoso.';
         }
 
@@ -322,41 +336,55 @@ class TaskController extends AbstractController
         return $recs;
     }
 
-    private function serializeTask(Task $t) : array
-    {
-        return [
-            'id'          => $t->getId(),
-            'title'       => $t->getTitle(),
-            'description' => $t->getDescription(),
-            'status'      => $t->getStatus(),
-            'priority'    => $t->getPriority(),
-            'dueDate'     => $t->getDueDate()?->format(DATE_ISO8601),
-            'categories'  => $t->getCategories(),
-            'assignedTo'  => $t->getAssignedTo() ? [
-                'id'    => $t->getAssignedTo()->getId(),
-                'email' => $t->getAssignedTo()->getEmail(),
-            ] : null,
-            'createdAt' => $t->getCreatedAt()->format(DATE_ISO8601),
-            'updatedAt' => $t->getUpdatedAt()->format(DATE_ISO8601),
-            'active'    => $t->isActive(),
-            'deletedAt' => $t->getDeletedAt()?->format(DATE_ISO8601),
-        ];
-    }
-
-    private function parseDateParam(?string $value, bool $endOfDay = false) : ?\DateTimeImmutable
+    private function parseDateParam(?string $value, bool $endOfDay = false) : ?DateTimeImmutable
     {
         if (!$value) {
             return null;
         }
         $value = trim($value);
-        // Si viene sólo YYYY-MM-DD agregamos hora
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
             $value .= $endOfDay ? ' 23:59:59' : ' 00:00:00';
         }
         try {
-            return new \DateTimeImmutable($value);
-        } catch (\Exception $e) {
+            return new DateTimeImmutable($value);
+        } catch (Exception) {
             return null; // ignorar filtros inválidos
         }
+    }
+
+    private function throwIfViolations($violations) : void
+    {
+        if (count($violations) > 0) {
+            $errors = [];
+            foreach ($violations as $v) {
+                $errors[] = ['field' => $v->getPropertyPath(), 'message' => $v->getMessage()];
+            }
+            throw new ValidationException($errors);
+        }
+    }
+
+    private function buildTaskFilters(Request $request) : array
+    {
+        $dueFromRaw = $request->query->get('dueFrom');
+        $dueToRaw   = $request->query->get('dueTo');
+        $dueFrom    = $this->parseDateParam($dueFromRaw);
+        $dueTo      = $this->parseDateParam($dueToRaw, true);
+        if ($dueFrom && $dueTo && $dueFrom > $dueTo) {
+            [$dueFrom, $dueTo] = [$dueTo, $dueFrom];
+        }
+        $filters = [
+            'q'               => $request->query->get('q'),
+            'status'          => $request->query->get('status'),
+            'priority'        => $request->query->get('priority'),
+            'assignedTo'      => $request->query->get('assignedTo'),
+            'dueFrom'         => $dueFrom,
+            'dueTo'           => $dueTo,
+            'includeInactive' => $request->query->getBoolean('includeInactive'),
+        ];
+        $categoriesParam = $request->query->get('categories');
+        if ($categoriesParam) {
+            $filters['categories'] = array_filter(array_map('trim', explode(',', $categoriesParam)));
+        }
+        return $filters;
     }
 }

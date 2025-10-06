@@ -62,6 +62,7 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   task: { type: Object, default: null }
 });
+
 const emit = defineEmits(['update:modelValue']);
 
 const model = computed({
@@ -102,7 +103,39 @@ function formatDate(d) {
   }
   return '—';
 }
-function formatDateTime(d){ if(!d) return '—'; try { return new Date(d).toLocaleString(); } catch { return d; } }
+function formatDateTime(d) {
+  if (!d) return '—';
+  try {
+    let dateStr = d;
+
+    // Si es un string que contiene 'T', es formato ISO
+    if (typeof d === 'string' && d.includes('T')) {
+      dateStr = d;
+    }
+    // Si es formato "YYYY-MM-DD HH:MM:SS", convertir a ISO
+    else if (typeof d === 'string' && d.includes(' ')) {
+      const [datePart, timePart] = d.split(' ');
+      dateStr = `${datePart}T${timePart}`;
+    }
+
+    const date = new Date(dateStr);
+
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+
+    return date.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch (error) {
+    return '—';
+  }
+}
 </script>
 
 <style scoped>

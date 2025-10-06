@@ -51,7 +51,7 @@ const local = reactive({ ...props.filters });
 const tagInput = ref(props.filters.tags || []);
 
 onMounted(async () => {
-  Object.assign(local, { ...props.filters });
+  // Object.assign(local, { ...props.filters });
   tagInput.value = props.filters.tags || [];
   await nextTick();
   ignoreInitial = false;

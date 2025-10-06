@@ -44,7 +44,9 @@ const error = ref('');
 const router = useRouter();
 const auth = useAuthStore();
 
-function togglePassword(){ showPassword.value = !showPassword.value; }
+function togglePassword() {
+  showPassword.value = !showPassword.value;
+}
 
 async function onLogin() {
   loading.value = true;
@@ -55,7 +57,8 @@ async function onLogin() {
     auth.setToken(res.token);
     router.push('/home');
   } catch (e) {
-    error.value = e.message || 'Error al iniciar sesión';
+    // El error ya viene formateado del interceptor global
+    error.value = e.message;
   } finally {
     loading.value = false;
   }

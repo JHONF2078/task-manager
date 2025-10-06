@@ -1,0 +1,10 @@
+services:
+    App\Service\TaskFilterService:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    App\Dto\TaskFilters:
+        autowire: true
+        autoconfigure: true
+        public: false

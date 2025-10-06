@@ -60,6 +60,37 @@ class TaskService
         return $task;
     }
 
+    // Nuevo: crear desde entidad mapeada
+    public function createFromEntity(Task $task): Task
+    {
+        $this->validateTask($task);
+        $this->em->persist($task);
+        $this->em->flush();
+        return $task;
+    }
+
+    // Nuevo: actualizar desde entidad mapeada
+    public function updateFromEntity(Task $task, Task $updatedEntity, bool $partial = true): Task
+    {
+        // Copiar campos del updatedEntity al original (excepto id y timestamps)
+        foreach ([
+            'Title', 'Description', 'Status', 'Priority', 'DueDate', 'Categories', 'AssignedTo'
+        ] as $field) {
+            $getter = 'get' . $field;
+            $setter = 'set' . $field;
+            if (method_exists($task, $setter) && method_exists($updatedEntity, $getter)) {
+                $value = $updatedEntity->$getter();
+                if ($partial && $value === null) {
+                    continue;
+                }
+                $task->$setter($value);
+            }
+        }
+        $this->validateTask($task);
+        $this->em->flush();
+        return $task;
+    }
+
     // Métodos restaurados
     public function softDelete(Task $task) : Task
     {
@@ -108,6 +139,11 @@ class TaskService
         if ($dto->categories !== null) {
             $this->applyCategories($task, $dto->categories);
         }
+        // Asegurar que las fechas estén establecidas
+        if (!$task->getCreatedAt()) {
+            $task->setCreatedAt(new \DateTimeImmutable());
+        }
+        $task->setUpdatedAt(new \DateTimeImmutable());
     }
 
     private function mapUpdateDto(Task $task, TaskUpdateInput $dto, bool $partial) : void
@@ -133,19 +169,31 @@ class TaskService
         if ($dto->categories !== null) {
             $this->applyCategories($task, $dto->categories);
         }
+        // Asegurar que la fecha de actualización se establezca
+        $task->setUpdatedAt(new \DateTimeImmutable());
     }
-
-    private function applyDueDate(Task $task, ?string $due) : void
+    private function applyDueDate(Task $task, $due) : void
     {
-        if ($due) {
+        if ($due === null) {
+            $task->setDueDate(null);
+            return;
+        }
+
+        if ($due instanceof \DateTimeInterface) {
+            $task->setDueDate(\DateTimeImmutable::createFromInterface($due));
+            return;
+        }
+
+        if (is_string($due)) {
             try {
                 $task->setDueDate(new \DateTimeImmutable($due));
             } catch (\Exception) {
                 throw new \InvalidArgumentException('Formato de fecha inválido en dueDate');
             }
-        } else {
-            $task->setDueDate(null);
+            return;
         }
+
+        throw new \InvalidArgumentException('Tipo de fecha inválido en dueDate');
     }
 
     private function applyAssigned(Task $task, ?int $userId) : void
@@ -204,6 +252,11 @@ class TaskService
         if (array_key_exists('categories', $input)) {
             $this->applyCategories($task, $input['categories']);
         }
+        // Asegurar que las fechas estén establecidas
+        if (!$task->getCreatedAt()) {
+            $task->setCreatedAt(new \DateTimeImmutable());
+        }
+        $task->setUpdatedAt(new \DateTimeImmutable());
     }
 
     private function validateTask(Task $task) : void

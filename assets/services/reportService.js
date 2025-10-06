@@ -1,6 +1,6 @@
 // Servicio para exportar reportes de tareas (CSV / PDF)
-// Usa directamente fetch porque necesitamos blobs (no el wrapper que parsea JSON)
-import { useAuthStore } from '../stores/authStore';
+// Usa la instancia centralizada de HTTP con responseType 'blob' para manejar archivos binarios
+import http from './http';
 
 function buildQuery(params){
   const q = new URLSearchParams();
@@ -13,7 +13,6 @@ function buildQuery(params){
 }
 
 export async function exportTasksReport(format, filters){
-  const auth = useAuthStore();
   // Mapear filtros internos a API
   const query = {
     format,
@@ -26,22 +25,41 @@ export async function exportTasksReport(format, filters){
     direction: filters.sortDir || 'asc'
   };
   const url = '/api/reports/tasks'+buildQuery(query);
-  const headers = new Headers();
-  if(auth.token){ headers.set('Authorization', `${auth.tokenType||'Bearer'} ${auth.token}`); }
-  const res = await fetch(url, { headers });
-  if(!res.ok){
+
+  const config = {
+    responseType: 'blob' // Importante: Axios debe tratar la respuesta como blob
+  };
+
+  try {
+    const response = await http.get(url, config);
+
+    // Intentar extraer filename del header
+    let filename = 'tasks_report.'+format;
+    const disp = response.headers['content-disposition'];
+    if(disp){
+      const m = /filename="?([^";]+)"?/i.exec(disp);
+      if(m) filename = m[1];
+    }
+
+    return { blob: response.data, filename };
+
+  } catch (error) {
     let msg = 'Error al exportar';
-    try { const j = await res.json(); msg = j.error || j.message || msg; } catch(_){ /* ignore */ }
+
+    // Manejar errores cuando la respuesta es un blob que contiene JSON de error
+    if(error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const errorData = JSON.parse(text);
+        msg = errorData.error || errorData.message || msg;
+      } catch(_) {
+        // Si no se puede parsear como JSON, mantener mensaje genérico
+      }
+    } else if(error.response?.data) {
+      // Si la respuesta no es blob pero tiene datos de error
+      msg = error.response.data.error || error.response.data.message || msg;
+    }
+
     throw new Error(msg);
   }
-  const blob = await res.blob();
-  // Intentar extraer filename del header
-  let filename = 'tasks_report.'+format;
-  const disp = res.headers.get('Content-Disposition');
-  if(disp){
-    const m = /filename="?([^";]+)"?/i.exec(disp);
-    if(m) filename = m[1];
-  }
-  return { blob, filename };
 }
-

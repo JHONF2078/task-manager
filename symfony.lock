@@ -59,6 +59,9 @@
             "./config/packages/lexik_jwt_authentication.yaml"
         ]
     },
+    "mark-gerarts/automapper-plus-bundle": {
+        "version": "1.5.0"
+    },
     "phpunit/phpunit": {
         "version": "12.3",
         "recipe": {

@@ -1,0 +1,6 @@
+que App\Entity\Task:
+    attributes:
+        createdAt:
+            groups: ['task:read']
+        updatedAt:
+            groups: ['task:read']
