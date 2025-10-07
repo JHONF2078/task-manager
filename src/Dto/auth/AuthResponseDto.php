@@ -2,7 +2,6 @@
 
 namespace App\Dto\auth;
 
-use App\Dto\UserResponseDto;
 use DateTimeImmutable;
 
 /**

@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Dto\TaskFilterDto;
+use App\Dto\Tasks\TaskFilterDto;
 use App\Service\Contract\TaskFilterServiceInterface;
 use Doctrine\ORM\QueryBuilder;
 

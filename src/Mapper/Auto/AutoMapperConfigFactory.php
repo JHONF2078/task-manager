@@ -4,10 +4,10 @@ namespace App\Mapper\Auto;
 
 use App\Dto\auth\AuthRequestDataDto;
 use App\Dto\auth\AuthResponseDto;
-use App\Dto\TaskCreateInput;
-use App\Dto\TaskResponseDto;
-use App\Dto\TaskUpdateInput;
-use App\Dto\UserResponseDto;
+use App\Dto\auth\UserResponseDto;
+use App\Dto\Tasks\TaskCreateRequest;
+use App\Dto\Tasks\TaskResponseDto;
+use App\Dto\Tasks\TaskUpdateRequest;
 use App\Entity\Task;
 use App\Entity\User;
 use App\Repository\UserRepository;
@@ -43,26 +43,26 @@ class AutoMapperConfigFactory implements AutoMapperConfiguratorInterface
      */
     private function configureTaskMappings(AutoMapperConfigInterface $config) : void
     {
-        // Mapeo de TaskCreateInput a Task
-        $config->registerMapping(TaskCreateInput::class, Task::class)
+        // Mapeo de TaskCreateRequest a Task
+        $config->registerMapping(TaskCreateRequest::class, Task::class)
             ->forMember('id', Operation::ignore())
             ->forMember('dueDate', fn ($source) => $this->parseDateString($source->dueDate))
             ->forMember(
                 'assignedTo',
-                fn (TaskCreateInput $source) => $source->assignedTo ? $this->userRepository->find($source->assignedTo) : null
+                fn (TaskCreateRequest $source) => $source->assignedTo ? $this->userRepository->find($source->assignedTo) : null
             )
             ->forMember('createdAt', Operation::ignore())
             ->forMember('updatedAt', Operation::ignore())
             ->forMember('deletedAt', Operation::ignore())
             ->forMember('isActive', Operation::ignore());
 
-        // Mapeo de TaskUpdateInput a Task (extiende la configuración anterior)
-        $config->registerMapping(TaskUpdateInput::class, Task::class)
+        // Mapeo de TaskUpdateRequest a Task
+        $config->registerMapping(TaskUpdateRequest::class, Task::class)
             ->forMember('id', Operation::ignore())
             ->forMember('dueDate', fn ($source) => $this->parseDateString($source->dueDate))
             ->forMember(
                 'assignedTo',
-                fn (TaskUpdateInput $source) => $source->assignedTo ? $this->userRepository->find($source->assignedTo) : null
+                fn (TaskUpdateRequest $source) => $source->assignedTo ? $this->userRepository->find($source->assignedTo) : null
             )
             ->forMember('createdAt', Operation::ignore())
             ->forMember('updatedAt', Operation::ignore())

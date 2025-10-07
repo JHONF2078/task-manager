@@ -1,17 +1,15 @@
 <?php declare(strict_types=1);
 
-namespace App\Dto;
+namespace App\Dto\Tasks;
 
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Serializer\Annotation\SerializedName;
 
-class TaskCreateInput
+class TaskUpdateRequest
 {
-    #[Assert\NotBlank(message: 'El título es obligatorio')]
+    // Todos opcionales en PUT/PATCH; constraints solo validan si hay valor
     #[Assert\Length(max:255, maxMessage: 'El título no puede exceder {{ limit }} caracteres')]
-    public string $title;
+    public ?string $title = null;
 
-    #[SerializedName("description")]
     #[Assert\Length(max:5000, maxMessage: 'La descripción es demasiado larga')]
     public ?string $description = null;
 
@@ -21,13 +19,13 @@ class TaskCreateInput
     #[Assert\Choice(callback: ['App\\Entity\\Task','validPriorities'], message: 'Prioridad inválida')]
     public ?string $priority = null;
 
-    // ISO8601 o fecha Y-m-d opcional
+    // Formato esperado YYYY-MM-DD (se recorta en el front) o null
     public ?string $dueDate = null;
 
-    // id numérico usuario asignado
     #[Assert\Positive(message: 'assignedTo debe ser id positivo')]
     public ?int $assignedTo = null;
 
-    // Puede venir array de strings o string separada por comas (lo normalizaremos luego)
+    // Array de strings (tags). Puede llegar null
     public array|string|null $categories = null;
 }
+

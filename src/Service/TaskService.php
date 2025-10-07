@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Dto\TaskCreateInput;
-use App\Dto\TaskUpdateInput;
+use App\Dto\Tasks\TaskCreateRequest;
+use App\Dto\Tasks\TaskUpdateRequest;
 use App\Entity\Task;
 use App\Exception\ValidationException;
 use App\Repository\TaskRepository;
@@ -41,22 +41,18 @@ class TaskService implements TaskServiceInterface
     }
 
     // Nuevos métodos con DTO
-    public function createFromDto(TaskCreateInput $dto) : Task
+    public function createFromDto(TaskCreateRequest $dto) : Task
     {
-        $this->validateDto($dto);
         $task = new Task();
         $this->mapCreateDto($task, $dto);
-        $this->validateTask($task);
         $this->em->persist($task);
         $this->em->flush();
         return $task;
     }
 
-    public function updateFromDto(Task $task, TaskUpdateInput $dto, bool $partial = true) : Task
+    public function updateFromDto(Task $task, TaskUpdateRequest $dto, bool $partial = true) : Task
     {
-        $this->validateDto($dto);
         $this->mapUpdateDto($task, $dto, $partial);
-        $this->validateTask($task);
         $this->em->flush();
         return $task;
     }
@@ -119,38 +115,31 @@ class TaskService implements TaskServiceInterface
         } return $task;
     }
 
-    private function mapCreateDto(Task $task, TaskCreateInput $dto) : void
+    private function mapCreateDto(Task $task, TaskCreateRequest $dto) : void
     {
-        $task->setTitle(trim($dto->title));
-        if ($dto->description !== null) {
-            $task->setDescription($dto->description);
+        $task->setTitle($dto->title);
+        $task->setDescription($dto->description);
+        $task->setStatus($dto->status ?? Task::STATUS_PENDING);
+        $task->setPriority($dto->priority ?? Task::PRIORITY_MEDIUM);
+        if ($dto->dueDate) {
+            $task->setDueDate(new \DateTimeImmutable($dto->dueDate));
         }
-        if ($dto->status !== null) {
-            $task->setStatus($dto->status);
+        if ($dto->assignedTo) {
+            $user = $this->userRepository->find($dto->assignedTo);
+            if ($user) {
+                $task->setAssignedTo($user);
+            }
         }
-        if ($dto->priority !== null) {
-            $task->setPriority($dto->priority);
+        if ($dto->categories) {
+            $cats = is_array($dto->categories) ? $dto->categories : explode(',', $dto->categories);
+            $task->setCategories(array_map('trim', $cats));
         }
-        if ($dto->dueDate !== null) {
-            $this->applyDueDate($task, $dto->dueDate);
-        }
-        if ($dto->assignedTo !== null) {
-            $this->applyAssigned($task, $dto->assignedTo);
-        }
-        if ($dto->categories !== null) {
-            $this->applyCategories($task, $dto->categories);
-        }
-        // Asegurar que las fechas estén establecidas
-        if (!$task->getCreatedAt()) {
-            $task->setCreatedAt(new \DateTimeImmutable());
-        }
-        $task->setUpdatedAt(new \DateTimeImmutable());
     }
 
-    private function mapUpdateDto(Task $task, TaskUpdateInput $dto, bool $partial) : void
+    private function mapUpdateDto(Task $task, TaskUpdateRequest $dto, bool $partial) : void
     {
         if ($dto->title !== null) {
-            $task->setTitle(trim($dto->title));
+            $task->setTitle($dto->title);
         }
         if ($dto->description !== null) {
             $task->setDescription($dto->description);
@@ -162,16 +151,18 @@ class TaskService implements TaskServiceInterface
             $task->setPriority($dto->priority);
         }
         if ($dto->dueDate !== null) {
-            $this->applyDueDate($task, $dto->dueDate);
+            $task->setDueDate(new \DateTimeImmutable($dto->dueDate));
         }
         if ($dto->assignedTo !== null) {
-            $this->applyAssigned($task, $dto->assignedTo);
+            $user = $this->userRepository->find($dto->assignedTo);
+            if ($user) {
+                $task->setAssignedTo($user);
+            }
         }
         if ($dto->categories !== null) {
-            $this->applyCategories($task, $dto->categories);
+            $cats = is_array($dto->categories) ? $dto->categories : explode(',', $dto->categories);
+            $task->setCategories(array_map('trim', $cats));
         }
-        // Asegurar que la fecha de actualización se establezca
-        $task->setUpdatedAt(new \DateTimeImmutable());
     }
     private function applyDueDate(Task $task, $due) : void
     {

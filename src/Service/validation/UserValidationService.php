@@ -2,7 +2,7 @@
 
 namespace App\Service\validation;
 
-use App\Dto\UserRegistrationRequest;
+use App\Dto\auth\UserRegistrationRequest;
 use App\Entity\User;
 use App\Exception\ValidationException;
 use App\Service\Contract\validation\UserValidationServiceInterface;

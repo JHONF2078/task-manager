@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository\Contract;
 
-use App\Dto\TaskFilterDto;
+use App\Dto\Tasks\TaskFilterDto;
 use App\Entity\Task;
 
 /**

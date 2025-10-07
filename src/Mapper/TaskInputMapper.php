@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mapper;
 
-use App\Dto\TaskCreateInput;
-use App\Dto\TaskUpdateInput;
+use App\Dto\Tasks\TaskCreateRequest;
+use App\Dto\Tasks\TaskUpdateRequest;
 use DateTimeImmutable;
 
 class TaskInputMapper
@@ -25,33 +25,43 @@ class TaskInputMapper
     }
 
     //Convertir de array a CreateInput
-    public static function fromArrayToCreateInput(array $data) : TaskCreateInput
+    public static function fromArrayToCreateInput(array $data) : TaskCreateRequest
     {
-        $dto              = new TaskCreateInput();
-        $dto->title       = (string)($data['title'] ?? '');
+        $dto              = new TaskCreateRequest();
+        $dto->title       = $data['title']       ?? '';
         $dto->description = $data['description'] ?? null;
         $dto->status      = $data['status']      ?? null;
         $dto->priority    = $data['priority']    ?? null;
-        $dto->dueDate     = self::parseDate($data['dueDate'] ?? null);
-        $dto->assignedTo  = isset($data['assignedTo']) && $data['assignedTo'] !== '' ? (int)$data['assignedTo'] : null;
-        $dto->categories  = $data['categories'] ?? null;
+        $dto->dueDate     = $data['dueDate']     ?? null;
+        $dto->assignedTo  = isset($data['assignedTo']) ? (int)$data['assignedTo'] : null;
+        $dto->categories  = $data['categories']  ?? null;
         return $dto;
     }
 
     //Convertir de array a UpdateInput
-    public static function fromArrayToUpdateInput(array $data) : TaskUpdateInput
+    public static function fromArrayToUpdateInput(array $data) : TaskUpdateRequest
     {
-        $dto = new TaskUpdateInput();
-        foreach (['title','description','status','priority','categories'] as $k) {
-            if (array_key_exists($k, $data)) {
-                $dto->$k = $data[$k];
-            }
+        $dto = new TaskUpdateRequest();
+        if (isset($data['title'])) {
+            $dto->title = $data['title'];
         }
-        if (array_key_exists('dueDate', $data)) {
-            $dto->dueDate = self::parseDate($data['dueDate']);
+        if (isset($data['description'])) {
+            $dto->description = $data['description'];
         }
-        if (array_key_exists('assignedTo', $data)) {
-            $dto->assignedTo = $data['assignedTo'] !== null && $data['assignedTo'] !== '' ? (int)$data['assignedTo'] : null;
+        if (isset($data['status'])) {
+            $dto->status = $data['status'];
+        }
+        if (isset($data['priority'])) {
+            $dto->priority = $data['priority'];
+        }
+        if (isset($data['dueDate'])) {
+            $dto->dueDate = $data['dueDate'];
+        }
+        if (isset($data['assignedTo'])) {
+            $dto->assignedTo = (int)$data['assignedTo'];
+        }
+        if (isset($data['categories'])) {
+            $dto->categories = $data['categories'];
         }
         return $dto;
     }

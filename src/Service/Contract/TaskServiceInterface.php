@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Contract;
 
-use App\Dto\TaskCreateInput;
-use App\Dto\TaskUpdateInput;
+use App\Dto\Tasks\TaskCreateRequest;
+use App\Dto\Tasks\TaskUpdateRequest;
 use App\Entity\Task;
 
 /**
@@ -33,21 +33,21 @@ interface TaskServiceInterface
 
     /**
      * Crea una tarea desde un DTO.
-     * @param TaskCreateInput $dto
+     * @param TaskCreateRequest $dto
      * @return Task
      * @throws \App\Exception\ValidationException
      */
-    public function createFromDto(TaskCreateInput $dto): Task;
+    public function createFromDto(TaskCreateRequest $dto): Task;
 
     /**
      * Actualiza una tarea desde un DTO.
      * @param Task $task
-     * @param TaskUpdateInput $dto
+     * @param TaskUpdateRequest $dto
      * @param bool $partial
      * @return Task
      * @throws \App\Exception\ValidationException
      */
-    public function updateFromDto(Task $task, TaskUpdateInput $dto, bool $partial = true): Task;
+    public function updateFromDto(Task $task, TaskUpdateRequest $dto, bool $partial = true): Task;
 
     /**
      * Crea una tarea desde una entidad mapeada.
@@ -67,4 +67,3 @@ interface TaskServiceInterface
      */
     public function updateFromEntity(Task $task, Task $updatedEntity, bool $partial = true): Task;
 }
-

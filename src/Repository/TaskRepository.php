@@ -2,7 +2,7 @@
 
 namespace App\Repository;
 
-use App\Dto\TaskFilterDto;
+use App\Dto\Tasks\TaskFilterDto;
 use App\Entity\Task;
 use App\Repository\Contract\TaskRepositoryInterface;
 use App\Service\TaskFilterService;

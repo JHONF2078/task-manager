@@ -4,7 +4,7 @@ namespace App\Mapper\Manual;
 
 use App\Dto\auth\AuthRequestDataDto;
 use App\Dto\auth\AuthResponseDto;
-use App\Dto\UserResponseDto;
+use App\Dto\auth\UserResponseDto;
 use DateTimeImmutable;
 
 class AuthResponseMapper

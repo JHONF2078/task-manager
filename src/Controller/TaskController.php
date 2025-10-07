@@ -3,14 +3,15 @@
 namespace App\Controller;
 
 use App\Controller\Traits\PaginateTrait;
-use App\Dto\TaskCreateInput;
-use App\Dto\TaskFilterDto;
-use App\Dto\TaskResponseDto;
-use App\Dto\TaskUpdateInput;
+use App\Dto\Tasks\TaskCreateRequest;
+use App\Dto\Tasks\TaskFilterDto;
+use App\Dto\Tasks\TaskResponseDto;
+use App\Dto\Tasks\TaskUpdateRequest;
 use App\Entity\Task;
 use App\Exception\EntityNotFoundException;
 use App\Exception\ValidationException;
 use App\Helper\MapperHelper;
+use App\Mapper\Manual\TaskResponseMapper;
 use App\Repository\TaskRepository;
 use App\Service\Contract\TaskServiceInterface;
 use AutoMapperPlus\AutoMapperInterface;
@@ -73,7 +74,11 @@ class TaskController extends AbstractController
             // Validar los filtros
             $violations = $this->validator->validate($filters);
             if (count($violations) > 0) {
-                throw new ValidationException($violations);
+                $errors = [];
+                foreach ($violations as $v) {
+                    $errors[] = ['field' => $v->getPropertyPath(), 'message' => $v->getMessage()];
+                }
+                throw new ValidationException($errors);
             }
 
             // Usamos el trait para obtener la paginación
@@ -84,11 +89,13 @@ class TaskController extends AbstractController
 
             $result = $this->taskRepository->search($filters, $page, $limit, $sort, $direction);
 
-            // Usar STRATEGY_MANUAL_MAPPER_FULL para asegurar la serialización completa
+            // Usar estrategia manual con toArray para obtener el array directamente
             $dtos = $this->mapperHelper->mapCollection(
                 $result['data'],
                 TaskResponseDto::class,
-                MapperHelper::STRATEGY_MANUAL_MAPPER_FULL
+                MapperHelper::STRATEGY_MANUAL_MAPPER,
+                TaskResponseMapper::class,
+                'toArray'
             );
 
             return $this->json([
@@ -116,7 +123,13 @@ class TaskController extends AbstractController
             throw new EntityNotFoundException('Tarea', $id);
         }
 
-        $mappedTask = $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL);
+        $mappedTask = $this->mapperHelper->map(
+            $task,
+            TaskResponseDto::class,
+            MapperHelper::STRATEGY_MANUAL_MAPPER,
+            TaskResponseMapper::class,
+            'toArray'
+        );
 
         // Log temporal para depuración
         $this->logger->debug('Task response:', [
@@ -132,14 +145,20 @@ class TaskController extends AbstractController
     public function create(Request $request) : JsonResponse
     {
         try {
-            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskCreateInput::class, 'json');
+            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskCreateRequest::class, 'json');
             $this->throwIfViolations($this->validator->validate($dto));
 
             $task = $this->autoMapper->map($dto, Task::class);
             $task = $this->taskService->createFromEntity($task);
 
             return $this->json(
-                $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL),
+                $this->mapperHelper->map(
+                    $task,
+                    TaskResponseDto::class,
+                    MapperHelper::STRATEGY_MANUAL_MAPPER,
+                    TaskResponseMapper::class,
+                    'toArray'
+                ),
                 201
             );
         } catch (UnregisteredMappingException $e) {
@@ -158,14 +177,20 @@ class TaskController extends AbstractController
         }
 
         try {
-            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskCreateInput::class, 'json');
+            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskCreateRequest::class, 'json');
             $this->throwIfViolations($this->validator->validate($dto));
 
             $updatedEntity = $this->autoMapper->map($dto, Task::class);
             $updated       = $this->taskService->updateFromEntity($task, $updatedEntity, false);
 
             return $this->json(
-                $this->mapperHelper->map($updated, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+                $this->mapperHelper->map(
+                    $updated,
+                    TaskResponseDto::class,
+                    MapperHelper::STRATEGY_MANUAL_MAPPER,
+                    TaskResponseMapper::class,
+                    'toArray'
+                )
             );
         } catch (UnregisteredMappingException $e) {
             return $this->json([
@@ -186,14 +211,20 @@ class TaskController extends AbstractController
         }
 
         try {
-            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskUpdateInput::class, 'json');
+            $dto = $this->mapperHelper->deserialize($request->getContent(), TaskUpdateRequest::class, 'json');
             $this->throwIfViolations($this->validator->validate($dto));
 
             $updatedEntity = $this->autoMapper->mapToObject($dto, $task);
             $updated       = $this->taskService->updateFromEntity($task, $updatedEntity);
 
             return $this->json(
-                $this->mapperHelper->map($updated, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+                $this->mapperHelper->map(
+                    $updated,
+                    TaskResponseDto::class,
+                    MapperHelper::STRATEGY_MANUAL_MAPPER,
+                    TaskResponseMapper::class,
+                    'toArray'
+                )
             );
         } catch (UnregisteredMappingException $e) {
             return $this->json([
@@ -219,7 +250,13 @@ class TaskController extends AbstractController
         }
         $this->taskService->softDelete($task);
         return $this->json(
-            $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+            $this->mapperHelper->map(
+                $task,
+                TaskResponseDto::class,
+                MapperHelper::STRATEGY_MANUAL_MAPPER,
+                TaskResponseMapper::class,
+                'toArray'
+            )
         );
     }
 
@@ -237,7 +274,13 @@ class TaskController extends AbstractController
         }
         $this->taskService->restore($task);
         return $this->json(
-            $this->mapperHelper->map($task, TaskResponseDto::class, MapperHelper::STRATEGY_MANUAL_MAPPER_FULL)
+            $this->mapperHelper->map(
+                $task,
+                TaskResponseDto::class,
+                MapperHelper::STRATEGY_MANUAL_MAPPER,
+                TaskResponseMapper::class,
+                'toArray'
+            )
         );
     }
 

@@ -2,13 +2,15 @@
 
 namespace App\Service\Report;
 
-use App\Dto\TaskFilterDto;
+use App\Dto\Tasks\TaskFilterDto;
 use App\Entity\Task;
 use App\Repository\TaskRepository;
 use App\Service\Contract\Report\TaskReportServiceInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Twig\Environment; // agregado
+use Twig\Environment;
+
+// agregado
 
 /**
  * Servicio para generar reportes de tareas en CSV y PDF con filtros.

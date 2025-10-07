@@ -1,10 +1,10 @@
 <?php declare(strict_types=1);
 
-namespace App\Dto;
+namespace App\Dto\Tasks;
 
 use DateTimeImmutable;
-use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\SerializedName;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * DTO para filtros de tareas
