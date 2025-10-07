@@ -8,15 +8,11 @@ use Symfony\Component\Serializer\SerializerInterface;
 
 class MapperHelper
 {
-
-
-
-    public const STRATEGY_SERIALIZER    = 'serializer';
+    public const STRATEGY_SERIALIZER = 'serializer';
 
     // un objeto en otro otro  de entidad a DTO y de DTO a entidad
     // el controller convierte a JSON mediante $this->json()
-    public const STRATEGY_AUTO_MAPPER   = 'auto_mapper';
-
+    public const STRATEGY_AUTO_MAPPER = 'auto_mapper';
 
     // un objeto en otro otro  de entidad a DTO y de DTO a entidad
     // un objeto en array

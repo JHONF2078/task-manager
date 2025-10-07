@@ -45,8 +45,8 @@ services:
     # === AutoMapper Configuration ===
     AutoMapperPlus\Configuration\AutoMapperConfigInterface:
         class: AutoMapperPlus\Configuration\AutoMapperConfig
-        factory: ['@App\Mapper\AutoMapperConfigFactory', 'create']
-        configurator: ['@App\Mapper\AutoMapperConfigFactory', 'configure']
+        factory: ['@App\Mapper\Auto\AutoMapperConfigFactory', 'create']
+        configurator: ['@App\Mapper\Auto\AutoMapperConfigFactory', 'configure']
 
     AutoMapperPlus\AutoMapperInterface:
         class: AutoMapperPlus\AutoMapper

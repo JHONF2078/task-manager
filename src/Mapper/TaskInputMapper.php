@@ -10,7 +10,7 @@ use DateTimeImmutable;
 
 class TaskInputMapper
 {
-    private static function parseDate(?string $date): ?DateTimeImmutable
+    private static function parseDate(?string $date) : ?DateTimeImmutable
     {
         if (empty($date)) {
             return null;
@@ -25,13 +25,13 @@ class TaskInputMapper
     }
 
     //Convertir de array a CreateInput
-    public static function fromArrayToCreateInput(array $data): TaskCreateInput
+    public static function fromArrayToCreateInput(array $data) : TaskCreateInput
     {
-        $dto = new TaskCreateInput();
+        $dto              = new TaskCreateInput();
         $dto->title       = (string)($data['title'] ?? '');
         $dto->description = $data['description'] ?? null;
-        $dto->status      = $data['status'] ?? null;
-        $dto->priority    = $data['priority'] ?? null;
+        $dto->status      = $data['status']      ?? null;
+        $dto->priority    = $data['priority']    ?? null;
         $dto->dueDate     = self::parseDate($data['dueDate'] ?? null);
         $dto->assignedTo  = isset($data['assignedTo']) && $data['assignedTo'] !== '' ? (int)$data['assignedTo'] : null;
         $dto->categories  = $data['categories'] ?? null;
@@ -39,7 +39,7 @@ class TaskInputMapper
     }
 
     //Convertir de array a UpdateInput
-    public static function fromArrayToUpdateInput(array $data): TaskUpdateInput
+    public static function fromArrayToUpdateInput(array $data) : TaskUpdateInput
     {
         $dto = new TaskUpdateInput();
         foreach (['title','description','status','priority','categories'] as $k) {

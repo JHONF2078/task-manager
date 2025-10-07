@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\Dto\auth\AuthRequestDataDto;
 use App\Dto\auth\AuthResponseDto;
-use App\Dto\auth\UserRegisterResponseDto;
+use App\Dto\UserResponseDto;
 use App\Exception\ConflictException;
 use App\Exception\InvalidCredentialsException;
 use App\Exception\RefreshTokenInvalidException;
@@ -100,7 +100,7 @@ class AuthController extends AbstractController
                 throw new ConflictException('Email ya registrado');
             }
 
-            $dto = $this->mapperHelper->map($user, UserRegisterResponseDto::class, MapperHelper::STRATEGY_AUTO_MAPPER);
+            $dto = $this->mapperHelper->map($user, UserResponseDto::class, MapperHelper::STRATEGY_AUTO_MAPPER);
 
             return $this->json($dto, 201);
 

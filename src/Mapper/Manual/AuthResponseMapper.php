@@ -41,15 +41,14 @@ class AuthResponseMapper
         $dto->issued_at  = new DateTimeImmutable('@' . (string)$data->issuedAt);
         $dto->expires_at = new DateTimeImmutable('@' . (string)$data->expiresAt);
 
-        $userDto         = new UserResponseDto();
-        $userData        = self::mapUser($data->user);
-        $userDto->id     = $userData['id'];
-        $userDto->email  = $userData['email'];
-        $userDto->name   = $userData['name'];
-        $userDto->roles  = $userData['roles'];
-        $userDto->active = $userData['active'];
-
-        $dto->user = $userDto;
+        // Crear UserResponseDto usando el constructor con todos los argumentos requeridos
+        $dto->user = new UserResponseDto(
+            id: $data->user->getId(),
+            email: $data->user->getEmail(),
+            name: $data->user->getName(),
+            roles: $data->user->getRoles(),
+            active: $data->user->isActive()
+        );
 
         return $dto;
     }
@@ -60,7 +59,6 @@ class AuthResponseMapper
      * @param AuthRequestDataDto $data
      *
      * @return array<string, mixed>
-     * @throws \Exception
      */
     public static function toArray(AuthRequestDataDto $data) : array
     {

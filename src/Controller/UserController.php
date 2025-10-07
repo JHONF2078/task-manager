@@ -79,10 +79,10 @@ class UserController extends AbstractController
             $roles         = $this->userValidationService->normalizeRoles($data['roles'] ?? null);
 
             $created = $this->authService->register(
-                $validatedData['normalizedData']['email'],
-                $validatedData['normalizedData']['password'],
+                $validatedData['email'],
+                $validatedData['password'],
                 $roles,
-                $validatedData['normalizedData']['name'] ?? ''
+                $validatedData['name'] ?? ''
             );
 
             if (!$created) {
