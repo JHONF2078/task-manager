@@ -16,9 +16,19 @@ class Task
     public const STATUS_EN_PROGRESO = 'en_progreso';
     public const STATUS_COMPLETADA  = 'completada';
 
+    // Alias en inglés para compatibilidad
+    public const STATUS_PENDING     = self::STATUS_PENDIENTE;
+    public const STATUS_IN_PROGRESS = self::STATUS_EN_PROGRESO;
+    public const STATUS_COMPLETED   = self::STATUS_COMPLETADA;
+
     public const PRIORITY_BAJA  = 'baja';
     public const PRIORITY_MEDIA = 'media';
     public const PRIORITY_ALTA  = 'alta';
+
+    // Alias en inglés para compatibilidad
+    public const PRIORITY_LOW    = self::PRIORITY_BAJA;
+    public const PRIORITY_MEDIUM = self::PRIORITY_MEDIA;
+    public const PRIORITY_HIGH   = self::PRIORITY_ALTA;
 
     #[ORM\Id, ORM\GeneratedValue, ORM\Column(type: 'integer')]
     #[Groups(['task:read'])]
