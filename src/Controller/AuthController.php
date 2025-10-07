@@ -2,16 +2,19 @@
 
 namespace App\Controller;
 
+use App\Dto\auth\AuthRequestDataDto;
+use App\Dto\auth\AuthResponseDto;
+use App\Dto\auth\UserRegisterResponseDto;
 use App\Exception\ConflictException;
 use App\Exception\InvalidCredentialsException;
 use App\Exception\RefreshTokenInvalidException;
 use App\Exception\ValidationException;
+use App\Helper\MapperHelper;
 use App\Mapper\Manual\AuthResponseMapper;
 use App\Service\Contract\AuthServiceInterface;
 use App\Service\RefreshTokenService;
 use App\Service\validation\UserValidationService;
 use DateTimeImmutable;
-use Exception;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -33,6 +36,7 @@ class AuthController extends AbstractController
         private readonly LoggerInterface          $logger,
         private readonly RefreshTokenService      $refreshTokenService,
         private readonly UserValidationService    $userValidationService,
+        private readonly MapperHelper             $mapperHelper,
     ) {
     }
 
@@ -96,12 +100,9 @@ class AuthController extends AbstractController
                 throw new ConflictException('Email ya registrado');
             }
 
-            return $this->json([
-                'id'    => $user->getId(),
-                'email' => $user->getEmail(),
-                'name'  => $user->getName(),
-                'roles' => $user->getRoles(),
-            ], 201);
+            $dto = $this->mapperHelper->map($user, UserRegisterResponseDto::class, MapperHelper::STRATEGY_AUTO_MAPPER);
+
+            return $this->json($dto, 201);
 
         } catch (Throwable $e) {
             if (!($e instanceof ValidationException || $e instanceof ConflictException)) {
@@ -166,7 +167,6 @@ class AuthController extends AbstractController
         return $response;
     }
 
-
     private function buildAuthResponse(
         string $accessToken,
         int $accessTtl,
@@ -176,7 +176,23 @@ class AuthController extends AbstractController
         string $refreshToken,
         $refreshExpiresAt
     ) : JsonResponse {
-        $payload = AuthResponseMapper::toArray($user, $accessToken, $accessTtl, $issuedAt, $expiresAt);
+        $authDataDto = new AuthRequestDataDto($user, $accessToken, $accessTtl, $issuedAt, $expiresAt);
+
+
+//        $payload = $this->mapperHelper->map(
+//            $authDataDto,
+//            AuthResponseDto::class,
+//            MapperHelper::STRATEGY_AUTO_MAPPER
+//        );
+
+
+        $payload = $this->mapperHelper->map(
+            $authDataDto,
+            AuthResponseDto::class,
+            MapperHelper::STRATEGY_MANUAL_MAPPER,
+            AuthResponseMapper::class,
+            'toDto'
+        );
 
         $response = $this->json($payload);
         $response->headers->setCookie($this->createRefreshCookie($refreshToken, $refreshExpiresAt));

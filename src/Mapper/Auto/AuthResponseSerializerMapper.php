@@ -2,7 +2,7 @@
 
 namespace App\Mapper\Auto;
 
-use App\Dto\AuthResponseDto;
+use App\Dto\auth\AuthResponseDto;
 use App\Dto\UserResponseDto;
 use App\Entity\User;
 use Symfony\Component\Serializer\SerializerInterface;

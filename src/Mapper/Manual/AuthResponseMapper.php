@@ -2,40 +2,52 @@
 
 namespace App\Mapper\Manual;
 
-use App\Dto\AuthResponseDto;
+use App\Dto\auth\AuthRequestDataDto;
+use App\Dto\auth\AuthResponseDto;
 use App\Dto\UserResponseDto;
-use App\Entity\User;
 use DateTimeImmutable;
 
 class AuthResponseMapper
 {
     /**
-     * Map a User entity and token metadata into an AuthResponseDto
+     * Extrae los datos del usuario en array
+     * @param $user
+     * @return array<string, mixed>
+     */
+    private static function mapUser($user): array
+    {
+        return [
+            'id'     => $user->getId(),
+            'email'  => $user->getEmail(),
+            'name'   => $user->getName(),
+            'roles'  => $user->getRoles(),
+            'active' => $user->isActive()
+        ];
+    }
+
+    /**
+     * Map input data from AuthRequestDataDto into an AuthResponseDto.
      *
-     * @param User   $user
-     * @param string $accessToken
-     * @param int    $accessTtl
-     * @param int    $issuedAt    Unix timestamp
-     * @param int    $expiresAt   Unix timestamp
+     * @param AuthRequestDataDto $data
      *
      * @return AuthResponseDto
      */
-    public static function toDto(User $user, string $accessToken, int $accessTtl, int $issuedAt, int $expiresAt) : AuthResponseDto
+    public static function toDto(AuthRequestDataDto $data) : AuthResponseDto
     {
-        $dto = new AuthResponseDto();
-        $dto->token = $accessToken;
+        $dto             = new AuthResponseDto();
+        $dto->token      = $data->accessToken;
         $dto->token_type = 'Bearer';
-        $dto->expires_in = $accessTtl;
-        $dto->issued_at = new DateTimeImmutable('@' . (string)$issuedAt);
-        $dto->expires_at = new DateTimeImmutable('@' . (string)$expiresAt);
+        $dto->expires_in = $data->accessTtl;
+        $dto->issued_at  = new DateTimeImmutable('@' . (string)$data->issuedAt);
+        $dto->expires_at = new DateTimeImmutable('@' . (string)$data->expiresAt);
 
-        // Crear el UserResponseDto
-        $userDto = new UserResponseDto();
-        $userDto->id = $user->getId();
-        $userDto->email = $user->getEmail();
-        $userDto->name = $user->getName();
-        $userDto->roles = $user->getRoles();
-        $userDto->active = $user->isActive();
+        $userDto         = new UserResponseDto();
+        $userData        = self::mapUser($data->user);
+        $userDto->id     = $userData['id'];
+        $userDto->email  = $userData['email'];
+        $userDto->name   = $userData['name'];
+        $userDto->roles  = $userData['roles'];
+        $userDto->active = $userData['active'];
 
         $dto->user = $userDto;
 
@@ -43,23 +55,22 @@ class AuthResponseMapper
     }
 
     /**
-     * Convierte directamente a un array con la estructura esperada por el frontend
+     * Converts input data from AuthRequestDataDto directly to an array.
+     *
+     * @param AuthRequestDataDto $data
+     *
+     * @return array<string, mixed>
+     * @throws \Exception
      */
-    public static function toArray(User $user, string $accessToken, int $accessTtl, int $issuedAt, int $expiresAt) : array
+    public static function toArray(AuthRequestDataDto $data) : array
     {
         return [
-            'token' => $accessToken,
+            'token'      => $data->accessToken,
             'token_type' => 'Bearer',
-            'expires_in' => $accessTtl,
-            'issued_at' => (new DateTimeImmutable('@' . (string)$issuedAt))->format(DateTimeImmutable::ATOM),
-            'expires_at' => (new DateTimeImmutable('@' . (string)$expiresAt))->format(DateTimeImmutable::ATOM),
-            'user' => [
-                'id' => $user->getId(),
-                'email' => $user->getEmail(),
-                'name' => $user->getName(),
-                'roles' => $user->getRoles(),
-                'active' => $user->isActive()
-            ]
+            'expires_in' => $data->accessTtl,
+            'issued_at'  => (new DateTimeImmutable('@' . (string)$data->issuedAt))->format(DateTimeImmutable::ATOM),
+            'expires_at' => (new DateTimeImmutable('@' . (string)$data->expiresAt))->format(DateTimeImmutable::ATOM),
+            'user'       => self::mapUser($data->user)
         ];
     }
 }
