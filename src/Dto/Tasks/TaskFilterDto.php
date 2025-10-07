@@ -2,6 +2,7 @@
 
 namespace App\Dto\Tasks;
 
+use App\Entity\Task;
 use DateTimeImmutable;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -14,10 +15,10 @@ class TaskFilterDto
     #[SerializedName('q')]
     public ?string $searchTerm = null;
 
-    #[Assert\Choice(['pending', 'in_progress', 'completed', 'cancelled'])]
+    #[Assert\Choice(callback: [Task::class, 'validStatuses'], message: 'Estado inválido')]
     public ?string $status = null;
 
-    #[Assert\Choice(['low', 'medium', 'high'])]
+    #[Assert\Choice(callback: [Task::class, 'validPriorities'], message: 'Prioridad inválida')]
     public ?string $priority = null;
 
     #[Assert\Positive]

@@ -22,7 +22,8 @@ function mapFilters(front){
   if(from && to && from > to){ [from, to] = [to, from]; }
   if(from) mapped.dueFrom = from; // ahora sólo fecha pura (YYYY-MM-DD)
   if(to) mapped.dueTo = to;
-  if(front.tags?.length) mapped.categories = front.tags.join(',');
+  // Mantener categories como array, no como string
+  if(front.tags?.length) mapped.categories = front.tags;
   if(front.includeInactive) mapped.includeInactive = front.includeInactive ? '1':'0';
   if(front.page) mapped.page = front.page;
   if(front.limit) mapped.limit = front.limit;
@@ -36,7 +37,12 @@ function buildQuery(params){
   const q = new URLSearchParams();
   Object.entries(params||{}).forEach(([k,v])=>{
     if(v===undefined || v===null || v==='') return;
-    q.append(k, v);
+    // Si es un array, añadir cada elemento como parámetro separado
+    if(Array.isArray(v)){
+      v.forEach(item => q.append(`${k}[]`, item));
+    } else {
+      q.append(k, v);
+    }
   });
   const s = q.toString();
   return s ? `?${s}` : '';

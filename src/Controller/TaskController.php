@@ -55,16 +55,33 @@ class TaskController extends AbstractController
     {
         try {
             // Convertir los query parameters a JSON
+            $assignedToParam = $request->query->get('assignedTo');
+            $assignedTo = $assignedToParam !== null && $assignedToParam !== '' ? (int)$assignedToParam : null;
+
+            // Parsear las fechas y convertirlas de vuelta a string para el deserializador
+            $dueFrom = $this->parseDateParam($request->query->get('dueFrom'));
+            $dueTo = $this->parseDateParam($request->query->get('dueTo'), true);
+            $createdFrom = $this->parseDateParam($request->query->get('createdFrom'));
+            $createdTo = $this->parseDateParam($request->query->get('createdTo'), true);
+
+            // Obtener categories como array (si viene como categories[] en la URL)
+            $categories = $request->query->all('categories');
+            // Si no viene como array, intentar obtenerlo como string simple
+            if (empty($categories)) {
+                $categoriesParam = $request->query->get('categories');
+                $categories = $categoriesParam ? (is_array($categoriesParam) ? $categoriesParam : [$categoriesParam]) : null;
+            }
+
             $filterParams = json_encode([
                 'q'               => $request->query->get('q'),
                 'status'          => $request->query->get('status'),
                 'priority'        => $request->query->get('priority'),
-                'assignedTo'      => $request->query->get('assignedTo'),
-                'dueFrom'         => $this->parseDateParam($request->query->get('dueFrom')),
-                'dueTo'           => $this->parseDateParam($request->query->get('dueTo'), true),
-                'createdFrom'     => $this->parseDateParam($request->query->get('createdFrom')),
-                'createdTo'       => $this->parseDateParam($request->query->get('createdTo'), true),
-                'categories'      => $request->query->get('categories'),
+                'assignedTo'      => $assignedTo,
+                'dueFrom'         => $dueFrom?->format('Y-m-d H:i:s'),
+                'dueTo'           => $dueTo?->format('Y-m-d H:i:s'),
+                'createdFrom'     => $createdFrom?->format('Y-m-d H:i:s'),
+                'createdTo'       => $createdTo?->format('Y-m-d H:i:s'),
+                'categories'      => $categories,
                 'includeInactive' => $request->query->getBoolean('includeInactive')
             ]);
 
